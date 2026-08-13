@@ -126,7 +126,7 @@ The cost is **write conflicts**, which you must design for explicitly.
   one place. Breaks down when a leader must change (failover, user relocation).
 - **Converge:** all replicas must reach the same final value.
   - **Last write wins (LWW)** by timestamp or ID — simple, **and lossy**. It silently
-    discards writes and depends on clocks you cannot trust (see `08-...faults.md`).
+    discards writes and depends on clocks you cannot trust (see `08-distributed-systems-faults.md`).
     Acceptable only when data loss is genuinely acceptable.
   - Merge values (e.g. concatenate, union).
   - Record the conflict and resolve it later — in application code or by asking the user.
@@ -202,7 +202,7 @@ completes. Whether this is on by default varies by database: check, and record w
 - [ ] Replication topology chosen and written down (single-leader / multi-leader / leaderless)
 - [ ] Whether an acknowledged write may be lost on failover is explicitly answered
 - [ ] Failover procedure defined: automatic or manual, timeout value, split-brain prevention
-- [ ] Fencing/leader-election mechanism prevents two active leaders (see `08-...faults.md`)
+- [ ] Fencing/leader-election mechanism prevents two active leaders (see `08-distributed-systems-faults.md`)
 - [ ] Replication lag is monitored and alerted on, with a defined threshold
 - [ ] Read-after-write handled for every path where a user reads what they just wrote
 - [ ] Monotonic reads handled where the UI polls or paginates

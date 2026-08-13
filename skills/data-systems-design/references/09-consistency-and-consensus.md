@@ -46,7 +46,7 @@ both.)
 
 ### 2.2 What is and isn't linearizable
 - Single-leader replication *can* be, **if you always read from the leader** — but a node
-  that believes it is leader may not be (see fencing, `08-...faults.md`).
+  that believes it is leader may not be (see fencing, `08-distributed-systems-faults.md`).
 - **Asynchronous replicas are not.** Reading from a follower breaks it.
 - **Quorums (`w + r > n`) are not**, in general — see `05-replication.md` §4.1. Making
   Dynamo-style quorums linearizable requires read repair synchronously on read and reading

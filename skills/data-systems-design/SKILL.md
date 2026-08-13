@@ -12,6 +12,18 @@ This skill is a **knowledge and gate skill**. It does not run a workflow. It is 
 `planner`, `detail-planning`, `implement`, `verify`, and `code-review`, and can be invoked
 directly for design questions.
 
+**Companion skill: `system-design`.** The two divide the problem cleanly:
+
+| | `system-design` | `data-systems-design` (this skill) |
+|---|---|---|
+| Question | *What should we build?* | *Will it stay correct?* |
+| Covers | Requirements method, capacity estimation, component selection, scaling ladder, database selection, simplicity laws | Isolation, replication anomalies, partitioning, consensus, hazards |
+| Output | Design document with trade-offs | Design Record with invariants and a hazard scan |
+
+Run `system-design` first to decide the shape; run this skill to make sure the shape
+survives concurrency and failure. Every deep dive in a design should end with this skill's
+hazard scan.
+
 ---
 
 # 1. ACTIVATION
@@ -369,6 +381,17 @@ These phrases are **forbidden** in a design without an accompanying mechanism:
 | `references/11-stream-processing.md` | Ch. 11, p. 439 | Queues, CDC, event sourcing, windows |
 | `references/12-correctness-and-integrity.md` | Ch. 12, p. 489 | End-to-end correctness, auditing, privacy |
 | `references/hazard-catalog.md` | Cross-cutting | Every review and verification |
+
+**Adjacent references in `system-design`**, for the questions this skill deliberately does
+not answer:
+
+| Reference | Read when |
+|---|---|
+| `system-design/references/02-estimation.md` | You need the actual numbers — QPS, storage, latency constants, availability math |
+| `system-design/references/03-scaling-ladder.md` | Deciding what infrastructure to add next, and what triggers it |
+| `system-design/references/04-building-blocks.md` | Choosing a load balancer, cache strategy, queue type, rate limiter, or ID scheme |
+| `system-design/references/05-database-selection.md` | Choosing or defending a datastore; B-tree vs. LSM; the RUM conjecture |
+| `system-design/references/06-simplicity-and-design-laws.md` | Any design that feels large — the subtraction pass |
 
 ---
 

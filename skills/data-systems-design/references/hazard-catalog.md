@@ -67,7 +67,7 @@ and `COMMIT`.
 **Consequence:** the transaction rolls back but the side effect already happened; or the
 side effect is repeated on retry; or a slow remote call holds locks and stalls the database.
 **Fix:** transactional outbox — write the intent in the transaction, deliver
-asynchronously with idempotency (`references/11-stream-processing.md` §2.3).
+asynchronously with idempotency (`11-stream-processing.md` §2.3).
 
 ### 🟡 H-07 — Long-running read transaction
 **Signature:** an analytical/reporting/export query, or a transaction left open across
@@ -95,7 +95,7 @@ a column, or makes a new column `NOT NULL` without a backfill.
 **Consequence:** during the rolling deploy both versions run; one of them crashes or
 writes data the other cannot read. Also breaks rollback.
 **Fix:** expand → migrate → contract across at least two deploys
-(`references/04-encoding-and-evolution.md` §4).
+(`04-encoding-and-evolution.md` §4).
 
 ### 🔴 H-10 — Required field added without a default
 **Signature:** a new non-nullable column, a new required protobuf field, a new mandatory
@@ -135,7 +135,7 @@ with side effects (charge, insert, publish, increment) with no dedup key.
 **Consequence:** duplicate charges, duplicate orders, double-counted metrics. Triggered by
 a timeout on a request that actually succeeded.
 **Fix:** end-to-end idempotency key generated at the true endpoint, deduplicated at the
-point of effect in the same transaction (`references/12-correctness-and-integrity.md` §3.1).
+point of effect in the same transaction (`12-correctness-and-integrity.md` §3.1).
 
 ### 🟡 H-15 — Missing timeout
 **Signature:** any HTTP client, database driver, socket, or lock acquisition with no
