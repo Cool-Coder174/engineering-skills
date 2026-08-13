@@ -1,196 +1,480 @@
-# Engineer Workflow - AI Development Pipeline
+# Engineering Skills
 
-A unified multi-stage development workflow system that combines Planning, Detail_Planning, Implementation, and Verification phases into a cohesive pipeline.
+A suite of Agent Skills that make an AI coding agent behave like a senior engineer: clarify
+the problem before designing, size it in numbers before choosing an architecture, make
+design decisions explicitly, implement with robustness invariants, verify against the spec,
+and review for the failure modes that only appear under concurrency, failure, and scale.
 
-## 🚀 Features
+Grounded in six books:
 
-- **Four Integrated Phases**: Planning → Detail_Planning → Implementation → Verification
-- **History Tracking**: Auto-saves plans to `History/` subfolder
-- **Click-Through Navigation**: Progress through phases sequentially
-- **Iterative Refinement**: Can revisit any previous phase
-- **Brownfield Support**: Analyze existing plans (TODO.md, plan.md)
-- **Cross-Platform**: Works with Web, Mobile, Desktop, Flutter projects
-- **Distributed Systems**: Supports microservices architectures
-
-## 📁 File Structure
-
-```
-skills/
-├── engineer-workflow.md   # Unified workflow (main entry point)
-├── planner.md             # Planning phase component
-├── detail_planning.md    # Detail planning phase component
-├── implement.md           # Implementation phase component
-├── verify.md             # Verification phase component
-└── code-review.md        # Multi-mode code review engine
-```
-
-## 🛠️ Installation
-
-### For Kilo Code / Claude Code Agents
-
-1. Copy the `skills/` folder to your agent's skills directory
-2. The skills will be automatically detected
-
-### For Custom Agent Setup
-
-Copy these skill files to your agent's skill folder:
-- `skills/engineer-workflow.md` - Main unified workflow
-- `skills/planner.md` - Planning component
-- `skills/detail_planning.md` - Detail planning component
-- `skills/implement.md` - Implementation component
-- `skills/verify.md` - Verification component
-- `skills/code-review.md` - Code review engine (independent, works with any workflow)
-
-## 📖 Usage
-
-### Quick Start
-
-```
-engineer-workflow: I want to build a task management app
-```
-
-### Phase Commands
-
-| Command | Description |
-|---------|-------------|
-| `planner` | Start planning phase - generates structured plan with F1, F2, F3... phases |
-| `detail_planning F1` | Expand phase F1 with detailed file paths and implementation steps |
-| `implement F1` | Generate code for phase F1 |
-| `verify F1` | Validate phase F1 implementation |
-| `continue` | Move to next phase |
-| `history` | View execution history |
-| `/review-diff` | Review current branch diff against main (includes babysit) |
-| `/review-uncommitted` | Review all uncommitted changes |
-| `/review` | Full end-to-end repository audit |
-| `/review-inscope` | Review changes against the stated task scope |
-
-### Complete Workflow Example
-
-```bash
-# Step 1: Start with an idea
-> engineer-workflow: Build a React todo app with Node.js API
-
-# Output: Generates plan with F1, F2, F3 phases
-
-# Step 2: Expand a phase
-> detail_planning F1
-
-# Output: Detailed breakdown with file paths
-
-# Step 3: Generate code
-> implement F1
-
-# Output: Production-ready code
-
-# Step 4: Verify implementation
-> verify F1
-
-# Output: Verification report with fix recommendations
-```
-
-## 📋 Output Formats
-
-### Planning Output
-```md
-# Plan: Project Title
-
-## Phase F1: Project Setup
-- Status: Not Started
-- Description: Initialize project
-
-### Breakdown
-- Initialize React project
-- Configure TypeScript
-- Set up state management
-```
-
-### Detail Planning Output
-```md
-## Phase F1: Project Setup - Detailed Breakdown
-
-### Step 1: Initialize Project
-- File: d:\Code\myapp\src\App.tsx
-- Action: Create React app structure
-```
-
-### Implementation Output
-```typescript
-// File: d:\Code\myapp\src\App.tsx
-export function App() {
-  return <div>Hello World</div>;
-}
-```
-
-### Verification Output
-```
-┌────────────────────────────────────┐
-│ VERIFICATION CHECKLIST             │
-├────────────────────────────────────┤
-│ [✓] Component implemented         │
-│ [✗] Missing method: update()      │
-└────────────────────────────────────┘
-```
-
-## 🔄 Greenfield vs Brownfield
-
-### Greenfield (New Projects)
-Simply describe your idea:
-```
-engineer-workflow: I want to build a trading dashboard
-```
-
-### Brownfield (Existing Plans)
-Analyze an existing plan file:
-```
-engineer-workflow: analyze plan.md
-```
-
-## 🎯 Use Cases
-
-| Use Case | Recommended Command |
-|----------|-------------------|
-| New project from scratch | `engineer-workflow: [idea]` |
-| Analyze existing TODO.md | `planner: analyze TODO.md` |
-| Expand specific phase | `detail_planning F2` |
-| Generate code | `implement F2` |
-| Validate implementation | `verify F2` |
-| Continue workflow | `continue` |
-| Review a PR / branch diff | `/review-diff` |
-| Check uncommitted work | `/review-uncommitted` |
-| Audit the full repository | `/review` |
-| Validate task completion | `/review-inscope` |
-
-## 🔧 Configuration
-
-### Project Root Notation
-The workflow uses `d:\Code\` notation for file paths. Update paths as needed for your project structure.
-
-### History Files
-Plans are automatically saved to `History/` subfolder with timestamps:
-- `History/project-name-2026-03-10.md`
-
-## 📦 Dependencies
-
-No external dependencies required. This is a skill framework for AI agents.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
-
-## 📄 License
-
-MIT License
-
-## 🔗 Related
-
-- [Planner Skill](skills/planner.md) - Planning component
-- [Detail Planning Skill](skills/detail_planning.md) - Phase expansion
-- [Implement Skill](skills/implement.md) - Code generation
-- [Verify Skill](skills/verify.md) - Validation
-- [Code Review Skill](skills/code-review.md) - Multi-mode code review engine
+| Book | What it contributes |
+|---|---|
+| **[*Designing Data-Intensive Applications*][ddia]** — Kleppmann | Correctness under concurrency, replication, and failure; the 48-hazard catalog |
+| **[*Cryptography and Network Security*][stallings]** — Stallings | Security services and mechanisms, threat framing, the 64-vulnerability catalog |
+| **[*System Design Interview: An Insider's Guide*][xu]** — Alex Xu | The design method, back-of-the-envelope estimation, the scaling ladder |
+| **[*Grokking the System Design Interview*][grok]** — Design Gurus | Building-block selection; the seven-step design process |
+| **[*Database Internals*][dbi]** — Alex Petrov | Database selection methodology, storage engine trade-offs, the RUM conjecture |
+| **[*Code Simplicity*][cs]** — Max Kanat-Alexander | The laws of software design; the anti-over-engineering discipline |
 
 ---
 
-**Note:** Individual skill files (`planner.md`, `detail_planning.md`, `implement.md`, `verify.md`) remain fully functional and can be used independently. The `engineer-workflow.md` provides the unified experience combining all four phases. The `code-review.md` skill is fully independent and can be used at any point in the development lifecycle.
+## Why this exists
+
+Agents are good at producing code that works on the happy path in a single-threaded test.
+They are much worse at two things that cause real problems.
+
+**They skip the design process.** They answer before clarifying, propose architectures with
+no numbers behind them, and reach for Kafka at 40 writes per second. The estimation gate and
+the simplicity pass exist to stop both.
+
+**They miss the failure modes that only appear under concurrency and scale:**
+
+- read-modify-write races that silently lose updates
+- check-then-act logic that double-books, double-charges, or oversells
+- migrations that break during the rolling deploy window
+- retries without idempotency that duplicate side effects
+- dual writes that leave two datastores permanently divergent
+- missing timeouts that turn one slow dependency into a total outage
+- wall-clock timestamps used to order events across machines
+
+**And they miss the failure modes that only appear when someone is attacking:**
+
+- tokens and salts generated from `Math.random()`, which is unpredictable to a statistician
+  and trivially predictable to an attacker
+- encryption used where integrity was needed, so the ciphertext is malleable
+- a signature that proves authorship and is silently assumed to prove freshness, leaving the
+  endpoint replayable
+- authentication mistaken for authorization — a logged-in user reading another tenant's row
+- an internal service that trusts an `X-User-Id` header any pod can set
+- a reset endpoint with no throttling, turning a six-digit code into a solved problem
+- an attack that succeeds and leaves no audit record, because the only log is one the
+  attacker can edit
+
+This suite turns both sets into **named, detectable catalogs** — 48 data hazards and 64
+security vulnerabilities — that the planning, implementation, verification, and review skills
+all check against.
+
+---
+
+## Structure
+
+```
+skills/
+├── engineer-workflow/SKILL.md      # Orchestrator: routes phases, owns shared state
+├── planner/SKILL.md                # Recon → requirements → estimates → gates → phased plan.md
+├── detail-planning/SKILL.md        # One phase → implementable spec in executor.md
+├── implement/SKILL.md              # Spec → code, with robustness invariants
+├── verify/SKILL.md                 # Code vs. spec, with evidence
+├── code-review/SKILL.md            # 6 review modes incl. /review-data and /review-security
+├── system-design/                  # WHAT to build
+│   ├── SKILL.md                    # 7-step method, design doc, red flags, proportionality
+│   └── references/
+│       ├── 01-design-method.md             # The steps in depth + question banks
+│       ├── 02-estimation.md                # Powers of two, latency numbers, nines, formulas
+│       ├── 03-scaling-ladder.md            # Single server → sharding, with triggers
+│       ├── 04-building-blocks.md           # LB, cache, CDN, queues, rate limiting, IDs, protocols
+│       ├── 05-database-selection.md        # Evaluation method, B-tree vs LSM, RUM conjecture
+│       ├── 06-simplicity-and-design-laws.md # Six laws, three flaws, over-engineering tests
+│       └── 07-reference-architectures.md   # Fan-out, chat, crawler, file sync, autocomplete…
+├── data-systems-design/            # Whether it stays CORRECT
+│   ├── SKILL.md                    # Decision tables, design record, language discipline
+│   └── references/
+│       ├── 01-reliability-scalability-maintainability.md
+│       ├── 02-data-models.md
+│       ├── 03-storage-and-retrieval.md
+│       ├── 04-encoding-and-evolution.md
+│       ├── 05-replication.md
+│       ├── 06-partitioning.md
+│       ├── 07-transactions.md
+│       ├── 08-distributed-systems-faults.md
+│       ├── 09-consistency-and-consensus.md
+│       ├── 10-batch-processing.md
+│       ├── 11-stream-processing.md
+│       ├── 12-correctness-and-integrity.md
+│       └── hazard-catalog.md       # 48 named hazards: signature → consequence → fix
+├── systems-programming/            # Whether the CODE survives the kernel
+│   ├── SKILL.md                    # 5 syscall rules, 7 file recipes, review scan, glossary
+│   └── references/
+│       ├── 01-file-descriptors-and-io.md    # fds, short counts, atomicity, fsync, mmap, locks
+│       ├── 02-files-and-directories.md      # stat, links, rename, durable update, path safety
+│       ├── 03-standard-io-and-buffering.md  # Buffer modes, flush vs fsync, fork duplication
+│       ├── 04-processes-and-execution.md    # fork/exec/wait, exit status, races, daemon rules
+│       ├── 05-signals.md                    # sigaction, async-signal-safety, EINTR, self-pipe
+│       ├── 06-threads-and-concurrency.md    # Mutexes, condvars, lock order, fork with threads
+│       ├── 07-ipc-and-sockets.md            # Pipes, framing, shared memory, fd passing
+│       ├── 08-toolchain-and-machine-model.md # Assemble/link/load, symbols, storage classes
+│       └── failure-catalog.md      # 55 named failures: signature → consequence → fix
+└── security-engineering/           # Whether it survives an ATTACKER
+    ├── SKILL.md                    # Threat model, security services, decision tables, security record
+    └── references/
+        ├── 01-threat-model-and-security-services.md
+        ├── 02-cryptographic-primitives-and-modes.md
+        ├── 03-randomness-and-key-management.md
+        ├── 04-public-key-and-key-exchange.md
+        ├── 05-integrity-hashes-and-macs.md
+        ├── 06-signatures-and-authentication-protocols.md
+        ├── 07-identity-certificates-and-pki.md
+        ├── 08-transport-and-channel-security.md
+        ├── 09-authentication-and-access-control.md
+        ├── 10-intrusion-detection-and-audit.md
+        ├── 11-malicious-software-and-availability.md
+        ├── 12-perimeter-and-trusted-systems.md
+        └── vulnerability-catalog.md # 64 named vulnerabilities: signature → consequence → fix
+```
+
+Each skill is a self-contained folder with a `SKILL.md`, which is the layout Claude Code,
+Cursor, and compatible agents expect.
+
+**The four gate skills split the problem deliberately.** `system-design` decides *what to
+build* — scope, capacity, components, trade-offs. `data-systems-design` decides *whether it
+stays correct* across machines — isolation, replication, ordering, hazards.
+`systems-programming` decides *whether the code survives one kernel* — short reads, atomicity,
+durability, signals, threads. `security-engineering` decides *whether it survives an
+adversary* — trust boundaries, identity, secrets, untrusted input.
+
+They are genuinely different questions, and the last is the one most often folded into the
+second by mistake. Correctness analysis assumes faults are random; security analysis assumes
+they are chosen. A queue consumer that is perfectly idempotent under duplicate delivery can
+still be a replay vulnerability, because idempotency answers "did this happen twice" and not
+"did the right party ask for it."
+
+A new public service runs all four. Adding a retry to an existing call runs only the second.
+A file-ingest pipeline or a daemon runs the third. Adding an authenticated endpoint runs only
+the fourth.
+
+---
+
+## Installation
+
+Copy the skill folders into your agent's skills directory:
+
+```bash
+# Claude Code / Cursor (user-level)
+cp -r skills/* ~/.claude/skills/
+cp -r skills/* ~/.cursor/skills/
+
+# Project-level
+cp -r skills/* .claude/skills/
+```
+
+On Windows (PowerShell):
+
+```powershell
+Copy-Item -Recurse -Force skills\* $HOME\.cursor\skills\
+```
+
+Skills are discovered automatically by name. `data-systems-design`, `systems-programming`, and
+`security-engineering` must be installed for the other skills' hazard, failure, and
+vulnerability scans to resolve their references.
+
+---
+
+## The pipeline
+
+```
+PLANNING → ARCHITECTURE → DESIGN → SYSTEMS → SECURITY → DETAIL PLANNING → IMPLEMENT → VERIFY → REVIEW
+ plan.md    ##Architecture  ##Design  ##Systems  ##Security   executor.md      code      report   findings
+```
+
+| Command | What happens |
+|---|---|
+| `engineer-workflow: [idea]` | Start the full pipeline |
+| `planner` | Recon the codebase, quantify requirements, estimate capacity, produce phased `plan.md` |
+| `design` / `system design` | Run the 7-step design method, estimation, and simplicity pass |
+| `estimate` | Just the back-of-the-envelope numbers |
+| `data design` | Run the data-systems design gate and hazard scan |
+| `systems` / `low level` | Run the systems gate: syscall rules, file recipes, failure scan |
+| `security design` | Run the security gate: threat model and vulnerability scan of the design |
+| `detail F1` | Expand phase F1 into a spec with contracts, failure modes, rollback |
+| `implement F1` | Write the code, enforcing the robustness invariants |
+| `verify F1` | Compare code to spec, with file-and-line evidence |
+| `/review-diff` | Review the branch vs. main, plus PR/CI babysit status |
+| `/review-uncommitted` | Catch work that looks finished but isn't |
+| `/review` | Full repository audit |
+| `/review-inscope` | Check the change against the stated task |
+| `/review-data` | Deep data/concurrency/distribution hazard audit |
+| `/review-security` | Deep security audit: threat model, then the vulnerability catalog |
+
+Each phase stops when it's done and waits for you. One phase per cycle, by design.
+
+### Example
+
+```
+> engineer-workflow: add a wallet with balance top-ups via Stripe
+
+  → Planning: recon, requirements, explicit non-goals, phases F1–F4
+  → Estimation: 40 top-ups/min peak, 2 KB/row, 1.2 GB/yr
+      ⇒ single Postgres primary has years of headroom; no queue, no sharding
+  → Architecture gate: API contract, data model, write path walked end to end,
+      trade-off table (ledger table vs. balance column → ledger, for auditability)
+      Simplicity pass: Kafka removed (no number justifies it), Redis kept (p99 target)
+  → Design gate triggers (money + persistence + external side effects):
+      INV-1  balance never negative  → CHECK constraint + atomic UPDATE
+      INV-2  one charge per request  → unique index on idempotency_key
+      H-14 non-idempotent retry, H-06 side effect in transaction → mitigated in F2
+  → Security gate triggers (money + a Stripe webhook + a new endpoint):
+      T-1  unauthenticated caller replaying a captured webhook
+           → signature verified, 5-minute window, seen event_id cached (V-25, V-26)
+      T-2  authenticated tenant reading another tenant's wallet
+           → tenant predicate in the repository, negative test in F2 (V-44)
+      Residual risk accepted: no per-request proof-of-possession on the session
+      cookie; mitigated by a 30-minute lifetime and server-side revocation (V-28)
+  → STOP
+
+> detail F2
+  → Spec: files, signatures, failure-mode table, idempotency contract,
+    isolation level, migration compatibility matrix, observability, rollback
+  → STOP
+
+> implement F2
+  → Code + concurrency tests, validation run, deviations logged
+  → STOP
+
+> verify F2
+  → ✗ FAIL: dedup uses a pre-flight SELECT outside the transaction (H-03/H-14)
+    with the exact fix
+```
+
+---
+
+## What the architecture gate produces
+
+For a new system, a new datastore, a new component on the request path, or a scaling change:
+
+- **Requirements** clarified before any solution is proposed, with explicit non-goals and
+  labeled assumptions — because answering fast without clarifying is how you build the wrong
+  system correctly
+- **Capacity estimates** with derivations shown, each row marked measured or estimated, and
+  the conclusion the numbers force ("sharding is not justified; the bottleneck at 10× is the
+  `events` write path")
+- **An interface contract** written before the architecture, which is what makes the
+  requirements concrete
+- **A data model driven by access patterns**, with a datastore decision record listing the
+  rejected alternative, the operability story, and the exit cost
+- **Deep dives on the two or three components where the difficulty actually lives** — not
+  even attention across every box
+- **A bottleneck, failure-mode, and operations table**, including what saturates first, the
+  degraded mode per dependency, and the next scale curve
+- **A simplicity pass** that removes every component the numbers do not justify
+
+---
+
+## What the design gate produces
+
+For anything touching persistence, concurrency, distribution, money, auth, or PII:
+
+- **Requirements** as numbers — load parameters, p50/p99 (never averages, never averaged
+  percentiles), RPO/RTO, and a consistency level chosen for a stated user-visible reason
+- **A fault model** — which faults are tolerated, the resulting behavior, and blast radius
+- **Decisions with rejected alternatives** — data model, storage engine, replication,
+  partition key, isolation level, delivery semantics
+- **Invariants with enforcement mechanisms** — "the application checks it first" is not a
+  mechanism under concurrency
+- **An evolution plan** — expand → migrate → contract, with a rollback path
+- **"What breaks at 10x"** — the specific resource that saturates first
+- **A hazard scan** against the catalog
+
+It also enforces **language discipline**: phrases like "eventually consistent",
+"we'll retry", "exactly once", "we'll keep them in sync", "add a cache", and
+"use a distributed lock" are rejected unless accompanied by the actual mechanism.
+
+---
+
+## The hazard catalog
+
+48 named hazards, each with a **detection signature** (what to grep for), a
+**consequence**, and a **required fix** — grouped as:
+
+| Group | Examples |
+|---|---|
+| A. Concurrency & transactions | H-01 lost update · H-02 write skew · H-03 uniqueness in app code · H-06 side effect in transaction |
+| B. Schema & API evolution | H-09 breaking change in one deploy · H-11 unknown-field dropping · H-12 blocking DDL |
+| C. Distributed calls & retries | H-14 non-idempotent retry · H-15 missing timeout · H-17 nested retries |
+| D. Clocks, locks, leadership | H-20 wall-clock ordering · H-22 lock without fencing token · H-24 cross-channel race |
+| E. Replication & partitioning | H-25 read-after-write from a replica · H-29 hot partition key · H-30 `hash mod N` |
+| F. Streams, queues, derived data | H-32 dual write · H-33 unbounded queue · H-36 processing-time windowing |
+| G. Reliability & operability | H-41 averages instead of percentiles · H-43 N+1 · H-44 cache without invalidation |
+
+The catalog is deliberately shared: `code-review` scans a diff with it, `verify` scans an
+implementation, and `planner` scans a proposed design — so the same defect is caught at
+whichever stage it appears.
+
+---
+
+## What the security gate produces
+
+For anything touching identity, authorization, secrets, cryptography, untrusted input, a new
+reachable surface, or regulated data:
+
+- **A named adversary with a stated capability** — because a control chosen without an attacker
+  in mind is a guess, and the usual failure is defending against the wrong one
+- **The assets and trust boundaries**, so "internal" stops being a security argument
+- **The security services owed** — authentication, access control, confidentiality, integrity,
+  nonrepudiation, availability — chosen per asset rather than assumed from the fact that
+  something is encrypted
+- **A mechanism per service**, at a named enforcement point in the code
+- **A vulnerability scan** against the catalog, run against the design and again against the
+  implementation
+- **Detection** — which security events are emitted, with which fields, and where the audit
+  trail lives
+- **Residual risk, stated and owned** — the attacks this design does not stop, and why that is
+  acceptable
+
+It enforces the same language discipline as the design gate: "we validate the input", "it's
+behind the VPN", "we sanitize it", "we encrypt it", and "internal tool, low risk" are rejected
+unless accompanied by the boundary, the canonical form, and the mechanism.
+
+---
+
+## The vulnerability catalog
+
+64 named vulnerabilities, each with a **detection signature**, a **consequence** traced to the
+principle it violates, and a **required fix** — grouped as:
+
+| Group | Examples |
+|---|---|
+| A. Cipher selection and modes | V-01 ECB · V-02 reused IV · V-05 keystream reuse · V-08 home-grown construction |
+| B. Randomness, keys, and secrets | V-09 non-cryptographic PRNG · V-12 long-lived key used directly · V-14 secret in source |
+| C. Integrity and message authentication | V-15 encryption as integrity · V-18 naive keyed hash · V-21 non-constant-time compare |
+| D. Authentication protocols and freshness | V-25 no replay protection · V-28 reusable bearer credential · V-30 session not renewed |
+| E. Identity, certificates, and trust | V-32 verification disabled · V-33 key from an unauthenticated channel · V-35 unauthenticated DH |
+| F. Channel and transport security | V-37 unprotected sensitive traffic · V-38 downgrade permitted · V-42 handshake not bound |
+| G. Access control and privilege | V-43 no authorization check · V-44 incomplete mediation · V-46 trust by network position |
+| H. Passwords and credential storage | V-48 recoverable password · V-50 fast hash · V-53 unthrottled guessing · V-54 default credentials |
+| I. Audit, detection, and logging | V-55 event not audited · V-56 modifiable audit trail · V-58 secrets in logs |
+| J. Untrusted input, malicious code, availability | V-59 input reaching an interpreter · V-60 development backdoor · V-62 unbounded work |
+
+Same sharing rule as the hazard catalog: the planner scans the design, `detail-planning` turns
+each mitigation into a step with a negative test, `implement` enforces it, and `verify` and
+`code-review` check that the mechanism exists where the record claimed it would.
+
+---
+
+## Design principles
+
+**Proportionality.** Every skill has an explicit anti-over-engineering rule. A copy change
+gets a three-bullet micro-plan and no hazard scan; a new source of truth gets the full
+design record. Applying distributed-systems ceremony to a single-file fix is itself a
+failure mode. Kanat-Alexander's version: the quality level of a design should be
+proportional to how long the system will keep helping people.
+
+**Numbers before architecture.** No component enters a design without an estimate or a
+requirement behind it. "It should scale fine" is not a design, and neither is a diagram with
+a queue nobody sized.
+
+**Don't design for a future you can't measure.** The most common and disastrous design error
+is predicting something about the future when you cannot know it. Design for measured load
+with a stated growth rate; make the next rung of the scaling ladder reachable; don't build
+it until a number says so.
+
+**Maintenance cost outweighs implementation cost.** A design that's fast to build and
+expensive to operate is a bad design. Every component added is a permanent tax on whoever
+is on call.
+
+**Evidence over assertion.** Verification and review findings must cite `file:line`.
+"No critical issues found" is a valid, valuable result; padding a review with invented nits
+trains people to ignore reviews.
+
+**Mechanisms over intentions.** Every invariant names the thing that enforces it. Every
+retry names its idempotency key. Every cache names its invalidation trigger.
+
+**Stop and ask.** Ambiguity that changes the design, irreversible operations, and
+spec/code conflicts stop the pipeline rather than getting a guess.
+
+---
+
+## Using skills independently
+
+Nothing requires the full pipeline:
+
+- `code-review` reads the codebase and git state directly — no `plan.md` needed.
+- `system-design` runs standalone for design work: "design a notification service", "will
+  this scale?", "should we use Postgres or Cassandra here?", "estimate the storage for this".
+  It's also useful as a review lens on an architecture someone else wrote.
+- `data-systems-design` answers correctness questions on its own ("should this be
+  serializable?", "is this partition key safe?").
+- `systems-programming` answers low-level questions on its own ("how do I replace this file
+  without losing it on a crash?", "why does my progress output vanish in a pipeline?", "is
+  this signal handler safe?", "why is this `undefined reference` when the library is right
+  there?"). Its file-management recipes stand alone for ingest and indexing pipelines.
+- `security-engineering` answers security questions on its own ("is this token design sound?",
+  "how should we store these credentials?", "what can an attacker do with this endpoint?"), and
+  works as a threat-modelling lens on a design someone else wrote.
+- `planner` is useful alone for turning a vague request into a grounded plan.
+
+---
+
+## Migrating from the previous layout
+
+Skills previously lived as flat files at the repository root. They are now folders under
+`skills/`, matching the standard agent-skill layout:
+
+| Before | After |
+|---|---|
+| `engineer-workflow.md` | `skills/engineer-workflow/SKILL.md` |
+| `planner.md` | `skills/planner/SKILL.md` |
+| `detail_planning.md` | `skills/detail-planning/SKILL.md` |
+| `implement.md` | `skills/implement/SKILL.md` |
+| `verify.md` | `skills/verify/SKILL.md` |
+| `code-review.md` | `skills/code-review/SKILL.md` |
+| — | `skills/data-systems-design/` (new) |
+| — | `skills/system-design/` (new) |
+| — | `skills/systems-programming/` (new) |
+| — | `skills/security-engineering/` (new) |
+
+If you installed the old flat files, remove them before installing the new folders so the
+agent does not load two versions of the same skill.
+
+---
+
+## Dependencies
+
+None. These are Markdown skill definitions for AI agents.
+
+## Contributing
+
+Fork, branch, PR. New hazards and vulnerabilities are welcome — follow the catalog's format
+(signature → consequence → fix) and cite the source of the failure mode. In the vulnerability
+catalog, mark guidance that post-dates the 4th edition with the **Modern** tag rather than
+attributing it to Stallings.
+
+## License
+
+MIT
+
+## Attribution
+
+Concepts, terminology, methodology, and reference numbers come from:
+
+- [*Designing Data-Intensive Applications*][ddia] — Martin Kleppmann (O'Reilly, 2017).
+  Page references throughout `data-systems-design` refer to that edition.
+- [*Cryptography and Network Security: Principles and Practices*][stallings] — William
+  Stallings (Prentice Hall, 4th ed., 2005). Security services and mechanisms, the attack
+  taxonomy, and the reference-monitor and audit-record models. Page and section references
+  throughout `security-engineering` refer to that edition; guidance that post-dates it is
+  marked **Modern** rather than attributed to the book.
+- [*System Design Interview: An Insider's Guide*][xu] — Alex Xu (2020). The design
+  framework, back-of-the-envelope estimation, and the scaling progression.
+- [*Grokking the System Design Interview*][grok] — Design Gurus. The seven-step process and
+  the building-block catalog.
+- [*Database Internals*][dbi] — Alex Petrov (O'Reilly, 2019). Database evaluation
+  methodology, storage engine trade-offs, and the RUM conjecture.
+- [*Code Simplicity: The Science of Software Development*][cs] — Max Kanat-Alexander
+  (O'Reilly, 2012). The laws of software design and the anti-over-engineering discipline.
+- [*Advanced Programming in the UNIX Environment*][apue] — W. Richard Stevens and Stephen A.
+  Rago (Addison-Wesley, 3rd ed., 2013). The system call semantics, atomicity rules, file
+  management, signals, and threads throughout `systems-programming`.
+- [*Systems Programming*][donovan] — John J. Donovan (McGraw-Hill, 1972). The machine model,
+  the design procedure for a system program, and the four functions of a loader.
+
+This repository contains original prose applying those concepts to agent workflows. It is
+not a reproduction of any of the books, and reading them is still strongly recommended.
+
+[ddia]: https://dataintensive.net/
+[stallings]: https://williamstallings.com/Cryptography/
+[xu]: https://www.systemdesigninsider.com/
+[grok]: https://www.designgurus.io/course/grokking-the-system-design-interview
+[dbi]: https://www.databass.dev/
+[cs]: https://www.codesimplicity.com/
+[apue]: https://www.apuebook.com/
+[donovan]: https://archive.org/details/systemsprogrammi0000dono
