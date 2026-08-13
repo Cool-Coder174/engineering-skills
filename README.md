@@ -166,7 +166,20 @@ the fourth.
 
 ## Installation
 
-Copy the skill folders into your agent's skills directory:
+### Claude Code plugin
+
+Register this repository as a marketplace, then install the complete skill suite:
+
+```text
+/plugin marketplace add Cool-Coder174/engineering-skills
+/plugin install engineering-skills@engineering-skills
+```
+
+The plugin is installed at user scope and its skills load automatically.
+
+### Manual installation
+
+Alternatively, copy the skill folders into your agent's skills directory:
 
 ```bash
 # Claude Code / Cursor (user-level)
