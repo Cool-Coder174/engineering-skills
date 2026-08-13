@@ -1,20 +1,27 @@
 # Engineering Skills
 
-A suite of Agent Skills that make an AI coding agent behave like a senior engineer: clarify
-the problem before designing, size it in numbers before choosing an architecture, make
-design decisions explicitly, implement with robustness invariants, verify against the spec,
-and review for the failure modes that only appear under concurrency, failure, and scale.
+A suite of Agent Skills that make an AI coding agent work like a senior engineer. The skills
+enforce one order of work:
 
-Grounded in six books:
+1. Clarify the problem before you design it.
+2. Size it in numbers before you choose an architecture.
+3. Record each design decision with the alternative you rejected.
+4. Write the code against robustness invariants.
+5. Check the code against the spec, with evidence.
+6. Review for the failure modes that appear only under concurrency, failure, attack, and scale.
+
+Grounded in eight books:
 
 | Book | What it contributes |
 |---|---|
-| **[*Designing Data-Intensive Applications*][ddia]** — Kleppmann | Correctness under concurrency, replication, and failure; the 48-hazard catalog |
+| **[*Designing Data-Intensive Applications*][ddia]** — Kleppmann | Correctness under concurrency, replication, and failure. The 48-hazard catalog. |
 | **[*Cryptography and Network Security*][stallings]** — Stallings | Security services and mechanisms, threat framing, the 64-vulnerability catalog |
+| **[*Advanced Programming in the UNIX Environment*][apue]** — Stevens and Rago | System call semantics, atomicity, durable file writes, signals, threads. Most of the 55-failure catalog. |
+| **[*Systems Programming*][donovan]** — Donovan | The machine model, the design procedure for a system program, the four loader functions |
 | **[*System Design Interview: An Insider's Guide*][xu]** — Alex Xu | The design method, back-of-the-envelope estimation, the scaling ladder |
-| **[*Grokking the System Design Interview*][grok]** — Design Gurus | Building-block selection; the seven-step design process |
+| **[*Grokking the System Design Interview*][grok]** — Design Gurus | Building-block selection. The seven-step design process. |
 | **[*Database Internals*][dbi]** — Alex Petrov | Database selection methodology, storage engine trade-offs, the RUM conjecture |
-| **[*Code Simplicity*][cs]** — Max Kanat-Alexander | The laws of software design; the anti-over-engineering discipline |
+| **[*Code Simplicity*][cs]** — Max Kanat-Alexander | The laws of software design. The anti-over-engineering discipline. |
 
 ---
 
@@ -24,20 +31,33 @@ Agents are good at producing code that works on the happy path in a single-threa
 They are much worse at two things that cause real problems.
 
 **They skip the design process.** They answer before clarifying, propose architectures with
-no numbers behind them, and reach for Kafka at 40 writes per second. The estimation gate and
-the simplicity pass exist to stop both.
+no numbers behind them, and choose Kafka at 40 writes per second. The estimation gate and
+the simplicity pass exist to stop that.
 
-**They miss the failure modes that only appear under concurrency and scale:**
+**They miss the failure modes that a passing test does not show.** These fall into three
+groups.
+
+*Under concurrency and scale:*
 
 - read-modify-write races that silently lose updates
 - check-then-act logic that double-books, double-charges, or oversells
 - migrations that break during the rolling deploy window
 - retries without idempotency that duplicate side effects
 - dual writes that leave two datastores permanently divergent
-- missing timeouts that turn one slow dependency into a total outage
+- a missing timeout that makes one slow dependency a total outage
 - wall-clock timestamps used to order events across machines
 
-**And they miss the failure modes that only appear when someone is attacking:**
+*Against the kernel, on one machine:*
+
+- a file updated in place, so a crash leaves half the old content and half the new
+- a write reported as durable that never reached the disk, because nothing called `fsync`
+- a rename that reaches the disk before the data, leaving the right name and no content
+- a short `read` or `write` treated as the whole transfer
+- a signal handler that calls `malloc` or `printf` and corrupts the heap
+- a condition variable waited on with `if` instead of `while`
+- a `fork` in a threaded process, where a library mutex stays locked forever
+
+*When someone is attacking:*
 
 - tokens and salts generated from `Math.random()`, which is unpredictable to a statistician
   and trivially predictable to an attacker
@@ -50,9 +70,9 @@ the simplicity pass exist to stop both.
 - an attack that succeeds and leaves no audit record, because the only log is one the
   attacker can edit
 
-This suite turns both sets into **named, detectable catalogs** — 48 data hazards and 64
-security vulnerabilities — that the planning, implementation, verification, and review skills
-all check against.
+This suite turns all three groups into **named, detectable catalogs** — 48 data hazards, 55
+systems failures, and 64 security vulnerabilities. The planning, implementation, verification,
+and review skills all check against them.
 
 ---
 
@@ -65,7 +85,7 @@ skills/
 ├── detail-planning/SKILL.md        # One phase → implementable spec in executor.md
 ├── implement/SKILL.md              # Spec → code, with robustness invariants
 ├── verify/SKILL.md                 # Code vs. spec, with evidence
-├── code-review/SKILL.md            # 6 review modes incl. /review-data and /review-security
+├── code-review/SKILL.md            # 6 review modes, including /review-data, /review-security
 ├── system-design/                  # WHAT to build
 │   ├── SKILL.md                    # 7-step method, design doc, red flags, proportionality
 │   └── references/
@@ -132,11 +152,11 @@ stays correct* across machines — isolation, replication, ordering, hazards.
 durability, signals, threads. `security-engineering` decides *whether it survives an
 adversary* — trust boundaries, identity, secrets, untrusted input.
 
-They are genuinely different questions, and the last is the one most often folded into the
-second by mistake. Correctness analysis assumes faults are random; security analysis assumes
-they are chosen. A queue consumer that is perfectly idempotent under duplicate delivery can
-still be a replay vulnerability, because idempotency answers "did this happen twice" and not
-"did the right party ask for it."
+These are four different questions. Agents most often merge the fourth into the second by
+mistake. Correctness analysis assumes that faults are random. Security analysis assumes that
+an attacker chooses them. A queue consumer that is fully idempotent under duplicate delivery
+can still be a replay vulnerability. Idempotency answers "did this happen twice" and not "did
+the right party ask for it".
 
 A new public service runs all four. Adding a retry to an existing call runs only the second.
 A file-ingest pipeline or a daemon runs the third. Adding an authenticated endpoint runs only
@@ -163,9 +183,9 @@ On Windows (PowerShell):
 Copy-Item -Recurse -Force skills\* $HOME\.cursor\skills\
 ```
 
-Skills are discovered automatically by name. `data-systems-design`, `systems-programming`, and
-`security-engineering` must be installed for the other skills' hazard, failure, and
-vulnerability scans to resolve their references.
+The agent finds each skill by its folder name. Install `data-systems-design`,
+`systems-programming`, and `security-engineering` together with the rest. The hazard, failure,
+and vulnerability scans in the other skills refer to those three catalogs by path.
 
 ---
 
@@ -204,7 +224,7 @@ Each phase stops when it's done and waits for you. One phase per cycle, by desig
 
   → Planning: recon, requirements, explicit non-goals, phases F1–F4
   → Estimation: 40 top-ups/min peak, 2 KB/row, 1.2 GB/yr
-      ⇒ single Postgres primary has years of headroom; no queue, no sharding
+      ⇒ single Postgres primary has years of headroom. No queue, no sharding.
   → Architecture gate: API contract, data model, write path walked end to end,
       trade-off table (ledger table vs. balance column → ledger, for auditability)
       Simplicity pass: Kafka removed (no number justifies it), Redis kept (p99 target)
@@ -212,13 +232,14 @@ Each phase stops when it's done and waits for you. One phase per cycle, by desig
       INV-1  balance never negative  → CHECK constraint + atomic UPDATE
       INV-2  one charge per request  → unique index on idempotency_key
       H-14 non-idempotent retry, H-06 side effect in transaction → mitigated in F2
+  → Systems gate: not triggered. No file, process, or signal work in this change.
   → Security gate triggers (money + a Stripe webhook + a new endpoint):
       T-1  unauthenticated caller replaying a captured webhook
            → signature verified, 5-minute window, seen event_id cached (V-25, V-26)
       T-2  authenticated tenant reading another tenant's wallet
            → tenant predicate in the repository, negative test in F2 (V-44)
       Residual risk accepted: no per-request proof-of-possession on the session
-      cookie; mitigated by a 30-minute lifetime and server-side revocation (V-28)
+      cookie. Mitigated by a 30-minute lifetime and server-side revocation (V-28)
   → STOP
 
 > detail F2
@@ -241,12 +262,12 @@ Each phase stops when it's done and waits for you. One phase per cycle, by desig
 
 For a new system, a new datastore, a new component on the request path, or a scaling change:
 
-- **Requirements** clarified before any solution is proposed, with explicit non-goals and
-  labeled assumptions — because answering fast without clarifying is how you build the wrong
-  system correctly
+- **Requirements** clarified before anyone proposes a solution, with explicit non-goals and
+  labeled assumptions. Answering fast without clarifying is how you build the wrong system
+  correctly
 - **Capacity estimates** with derivations shown, each row marked measured or estimated, and
-  the conclusion the numbers force ("sharding is not justified; the bottleneck at 10× is the
-  `events` write path")
+  the conclusion the numbers force ("sharding is not justified. The bottleneck at 10× is the
+  `events` write path.")
 - **An interface contract** written before the architecture, which is what makes the
   requirements concrete
 - **A data model driven by access patterns**, with a datastore decision record listing the
@@ -295,9 +316,57 @@ It also enforces **language discipline**: phrases like "eventually consistent",
 | F. Streams, queues, derived data | H-32 dual write · H-33 unbounded queue · H-36 processing-time windowing |
 | G. Reliability & operability | H-41 averages instead of percentiles · H-43 N+1 · H-44 cache without invalidation |
 
-The catalog is deliberately shared: `code-review` scans a diff with it, `verify` scans an
-implementation, and `planner` scans a proposed design — so the same defect is caught at
-whichever stage it appears.
+Every skill shares the catalog. `code-review` scans a diff with it, `verify` scans an
+implementation, and `planner` scans a proposed design. The same defect therefore gets caught
+at whichever stage it appears.
+
+---
+
+## What the systems gate produces
+
+For a change that opens, writes, moves, or locks a file, that starts a process, that handles a
+signal, or that shares memory between threads:
+
+- **A durable-write recipe, named and applied** — temporary file in the same directory,
+  `fsync`, `rename`, then `fsync` on the directory that holds it. "We write the file" is not a
+  durability claim, and step 6 is the step engineers omit most often
+- **Each pair of calls that forms one logical operation, replaced by the atomic call.** Use
+  `O_APPEND` instead of seek-then-write, `O_EXCL` instead of test-then-create, and `pread`
+  instead of seek-then-read
+- **A loop around every `read` and `write`** that crosses a pipe, a socket, or a large buffer.
+  A short count is normal behavior and not an error
+- **A signal contract** — which signals the process handles, which functions each handler may
+  call, and which work it defers to the main loop
+- **A lock-order statement** for any code path that holds two mutexes
+- **A language exposure check** — which of the five system call rules the runtime hides, and
+  which it does not. No runtime makes two calls atomic. No runtime calls `fsync` for you.
+- **A failure scan** against the catalog
+
+The gate also names the pass structure for any program that transforms data. One question
+decides it: does any output depend on input the program has not read yet? If yes, the program
+needs two passes or a patch list.
+
+---
+
+## The failure catalog
+
+55 named failures, each with a **detection signature**, a **consequence**, and a **required
+fix** — grouped as:
+
+| Group | Examples |
+|---|---|
+| A. File descriptors and I/O | S-01 unchecked `write` · S-03 short `read` as the whole file · S-06 `stat` before `open` · S-07 durable write with no `fsync` |
+| B. Files, names, directories | S-11 write over a file in place · S-13 data reaching the disk after the rename · S-16 unchecked path from a user |
+| C. Buffered streams | S-20 output a pipeline never shows · S-21 output duplicated after `fork` · S-22 stream and descriptor on one file |
+| D. Processes | S-25 no `wait` for a child · S-28 command built from user input · S-29 descriptor leaked into a child |
+| E. Signals | S-31 unsafe function in a handler · S-33 handler that loses `errno` · S-35 `SIGPIPE` with no handling |
+| F. Threads | S-37 `pthread_cond_wait` inside an `if` · S-38 no lock order · S-42 `fork` in a process that has threads |
+| G. IPC and sockets | S-45 stream with no framing · S-46 peer length used as an allocation size · S-47 network call with no timeout |
+| H. Memory and toolchain | S-50 pointer to a returned local · S-51 size computed by multiplication · S-55 `struct` written to a socket |
+
+Each entry states which languages it applies to. Most of them apply to Python, Go, Java, Rust,
+and Node.js without change. A runtime hides `EINTR`. It does not hide the missing `fsync`, and
+it does not make two calls atomic.
 
 ---
 
@@ -306,11 +375,11 @@ whichever stage it appears.
 For anything touching identity, authorization, secrets, cryptography, untrusted input, a new
 reachable surface, or regulated data:
 
-- **A named adversary with a stated capability** — because a control chosen without an attacker
-  in mind is a guess, and the usual failure is defending against the wrong one
+- **A named adversary with a stated capability** — a control chosen without an attacker in
+  mind is a guess. The usual failure is a defense against the wrong attacker
 - **The assets and trust boundaries**, so "internal" stops being a security argument
 - **The security services owed** — authentication, access control, confidentiality, integrity,
-  nonrepudiation, availability — chosen per asset rather than assumed from the fact that
+  nonrepudiation, availability. Choose them per asset. Never assume them from the fact that
   something is encrypted
 - **A mechanism per service**, at a named enforcement point in the code
 - **A vulnerability scan** against the catalog, run against the design and again against the
@@ -344,16 +413,16 @@ principle it violates, and a **required fix** — grouped as:
 | I. Audit, detection, and logging | V-55 event not audited · V-56 modifiable audit trail · V-58 secrets in logs |
 | J. Untrusted input, malicious code, availability | V-59 input reaching an interpreter · V-60 development backdoor · V-62 unbounded work |
 
-Same sharing rule as the hazard catalog: the planner scans the design, `detail-planning` turns
-each mitigation into a step with a negative test, `implement` enforces it, and `verify` and
-`code-review` check that the mechanism exists where the record claimed it would.
+The same sharing rule applies. The planner scans the design. `detail-planning` turns each
+mitigation into a step with a negative test. `implement` enforces it. `verify` and
+`code-review` then check that the mechanism exists where the record claimed it would.
 
 ---
 
 ## Design principles
 
 **Proportionality.** Every skill has an explicit anti-over-engineering rule. A copy change
-gets a three-bullet micro-plan and no hazard scan; a new source of truth gets the full
+gets a three-bullet micro-plan and no hazard scan. A new source of truth gets the full
 design record. Applying distributed-systems ceremony to a single-file fix is itself a
 failure mode. Kanat-Alexander's version: the quality level of a design should be
 proportional to how long the system will keep helping people.
@@ -364,16 +433,21 @@ a queue nobody sized.
 
 **Don't design for a future you can't measure.** The most common and disastrous design error
 is predicting something about the future when you cannot know it. Design for measured load
-with a stated growth rate; make the next rung of the scaling ladder reachable; don't build
+with a stated growth rate. Make the next rung of the scaling ladder reachable. Don't build
 it until a number says so.
+
+**Assume the process dies between any two steps.** The kernel can stop a process between any
+two calls. The power can fail between a write and the disk. Any operation that takes two calls
+is not atomic, at any level of the stack. This is the same rule as check-then-act in a
+database, one layer down.
 
 **Maintenance cost outweighs implementation cost.** A design that's fast to build and
 expensive to operate is a bad design. Every component added is a permanent tax on whoever
 is on call.
 
 **Evidence over assertion.** Verification and review findings must cite `file:line`.
-"No critical issues found" is a valid, valuable result; padding a review with invented nits
-trains people to ignore reviews.
+"No critical issues found" is a valid result. Padding a review with invented nits trains
+people to ignore reviews.
 
 **Mechanisms over intentions.** Every invariant names the thing that enforces it. Every
 retry names its idempotency key. Every cache names its invalidation trigger.
@@ -393,10 +467,11 @@ Nothing requires the full pipeline:
   It's also useful as a review lens on an architecture someone else wrote.
 - `data-systems-design` answers correctness questions on its own ("should this be
   serializable?", "is this partition key safe?").
-- `systems-programming` answers low-level questions on its own ("how do I replace this file
+- `systems-programming` answers low-level questions on its own: "how do I replace this file
   without losing it on a crash?", "why does my progress output vanish in a pipeline?", "is
   this signal handler safe?", "why is this `undefined reference` when the library is right
-  there?"). Its file-management recipes stand alone for ingest and indexing pipelines.
+  there?". Its seven file-management recipes also work alone. Use them for a document-ingest,
+  indexing, or RAG pipeline that must not lose or corrupt a file.
 - `security-engineering` answers security questions on its own ("is this token design sound?",
   "how should we store these credentials?", "what can an attacker do with this endpoint?"), and
   works as a threat-modelling lens on a design someone else wrote.
@@ -422,8 +497,8 @@ Skills previously lived as flat files at the repository root. They are now folde
 | — | `skills/systems-programming/` (new) |
 | — | `skills/security-engineering/` (new) |
 
-If you installed the old flat files, remove them before installing the new folders so the
-agent does not load two versions of the same skill.
+If you installed the old flat files, remove them before you install the new folders.
+Otherwise the agent loads two versions of the same skill.
 
 ---
 
@@ -433,10 +508,11 @@ None. These are Markdown skill definitions for AI agents.
 
 ## Contributing
 
-Fork, branch, PR. New hazards and vulnerabilities are welcome — follow the catalog's format
-(signature → consequence → fix) and cite the source of the failure mode. In the vulnerability
-catalog, mark guidance that post-dates the 4th edition with the **Modern** tag rather than
-attributing it to Stallings.
+Fork, branch, PR. New hazards, failures, and vulnerabilities are welcome. Follow the format
+of the catalog you add to (signature → consequence → fix) and cite the source of the failure
+mode. In the failure catalog, state which languages each entry applies to. In the
+vulnerability catalog, mark guidance that post-dates the 4th edition with the **Modern** tag
+rather than attributing it to Stallings.
 
 ## License
 
@@ -451,7 +527,7 @@ Concepts, terminology, methodology, and reference numbers come from:
 - [*Cryptography and Network Security: Principles and Practices*][stallings] — William
   Stallings (Prentice Hall, 4th ed., 2005). Security services and mechanisms, the attack
   taxonomy, and the reference-monitor and audit-record models. Page and section references
-  throughout `security-engineering` refer to that edition; guidance that post-dates it is
+  throughout `security-engineering` refer to that edition. Guidance that post-dates it is
   marked **Modern** rather than attributed to the book.
 - [*System Design Interview: An Insider's Guide*][xu] — Alex Xu (2020). The design
   framework, back-of-the-envelope estimation, and the scaling progression.
@@ -467,8 +543,8 @@ Concepts, terminology, methodology, and reference numbers come from:
 - [*Systems Programming*][donovan] — John J. Donovan (McGraw-Hill, 1972). The machine model,
   the design procedure for a system program, and the four functions of a loader.
 
-This repository contains original prose applying those concepts to agent workflows. It is
-not a reproduction of any of the books, and reading them is still strongly recommended.
+This repository contains original prose that applies those concepts to agent workflows. It is
+not a reproduction of any of the books. Read them.
 
 [ddia]: https://dataintensive.net/
 [stallings]: https://williamstallings.com/Cryptography/
