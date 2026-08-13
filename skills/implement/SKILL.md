@@ -245,4 +245,5 @@ STOP — awaiting `verify F<N>` or the next instruction.
 | Verify the implementation against the spec | `verify` |
 | Review the resulting diff | `code-review` |
 | Design decisions and hazard catalog | `data-systems-design` |
+| File, process, signal, and thread rules and the failure catalog | `systems-programming` |
 | Full pipeline | `engineer-workflow` |

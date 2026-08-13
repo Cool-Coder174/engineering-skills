@@ -484,6 +484,7 @@ Self-check before emitting the plan:
 | Full pipeline (plan → detail → implement → verify) | `engineer-workflow` |
 | System design method, estimation, building blocks, DB selection | `system-design` |
 | Data/distribution design decisions and hazards | `data-systems-design` |
+| File management, process, signal, and thread decisions | `systems-programming` |
 | Expand one phase into implementable steps | `detail-planning` |
 | Write the code for a phase | `implement` |
 | Check an implementation against its spec | `verify` |

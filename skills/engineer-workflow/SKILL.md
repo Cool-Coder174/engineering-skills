@@ -38,6 +38,7 @@ Iteration is allowed from any phase back to any earlier one. Skipping *forward* 
 | Planning | `plan`, `planner`, `analyze`, a new idea | `planner` |
 | Architecture gate | automatic (Section 3.1), or `design`, `system design` | `system-design` |
 | Design gate | automatic (Section 3.2) | `data-systems-design` |
+| Systems gate | automatic (Section 3.3), or `systems`, `low level` | `systems-programming` |
 | Detail planning | `detail F<N>`, `expand F<N>`, `breakdown F<N>` | `detail-planning` |
 | Implementation | `implement F<N>`, `execute`, `build`, `continue` | `implement` |
 | Verification | `verify F<N>`, `validate` | `verify` |
@@ -125,6 +126,24 @@ mechanical rather than improvised.
 
 **If it does not apply:** record one line — `Design gate: not applicable — [reason]` — and
 continue. Applying data-systems ceremony to a copy change is its own failure mode.
+
+## 3.3 Systems gate
+
+**Applies when the work touches any of:** a file read, write, copy, move, or delete · a
+directory walk or a document ingest · a durability or crash-safety requirement · a process
+that the code starts · a signal handler · a daemon or long-lived worker · a thread or shared
+memory · a pipe, a FIFO, or a socket · a build, link, or load failure.
+
+**If it applies:** load `systems-programming`. Apply the five rules of the system call
+boundary and the file management recipes. Run its failure catalog against the design and
+record the `S-` IDs that apply.
+
+This gate catches what the design gate cannot see. The design gate asks whether the *design*
+stays correct across machines. This gate asks whether the *code* stays correct against one
+kernel. A durable write that omits `fsync` on the directory passes every design review and
+still loses the file.
+
+**If it does not apply:** record one line — `Systems gate: not applicable — [reason]`.
 
 ---
 
@@ -236,6 +255,7 @@ Stop and ask the user, rather than guessing, when:
 | `planner` | Reconnaissance, requirements, estimation, phased `plan.md` |
 | `system-design` | Design method, capacity estimation, building blocks, database selection, simplicity laws |
 | `data-systems-design` | Design records, decision tables, hazard catalog |
+| `systems-programming` | System call rules, file management recipes, failure catalog |
 | `detail-planning` | Per-phase spec in `executor.md` |
 | `implement` | Code, with robustness invariants enforced |
 | `verify` | Conformance of code to spec, with evidence |

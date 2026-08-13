@@ -110,6 +110,13 @@ its **Quick scan order**:
 Not applicable: H-20…H-24 (no distributed coordination in this change).
 ```
 
+**Systems-level trigger.** If the diff touches a file, a directory, a process, a signal, a
+thread, a pipe, or a socket, also run
+`systems-programming/references/failure-catalog.md` and report findings by their `S-` IDs.
+That catalog covers the faults the hazard catalog does not reach: short reads and writes,
+`EINTR`, non-atomic call pairs, a missing `fsync`, a write over a file in place, and unsafe
+signal handlers. It applies in every language, not only C.
+
 **Honesty rule:** if a change has no data, concurrency, or distribution surface, write
 `Hazard scan: not applicable — [reason]` and move on. Inventing hazards to look thorough
 destroys the signal that makes this section useful.
@@ -395,6 +402,7 @@ vague findings, and omitting the hazard scan.
 |---|---|
 | Verify against a written spec | `verify` |
 | Hazard catalog and design references | `data-systems-design` |
+| Failure catalog for file, process, signal, and thread code | `systems-programming` |
 | Plan the fixes | `planner` |
 | Implement the fixes | `implement` |
 | Full pipeline | `engineer-workflow` |

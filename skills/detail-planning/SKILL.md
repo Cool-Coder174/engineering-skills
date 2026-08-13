@@ -248,4 +248,5 @@ discovers it during an incident.
 | Check the implementation against this spec | `verify` |
 | Review the resulting diff | `code-review` |
 | Data/distribution decisions and hazard catalog | `data-systems-design` |
+| File, process, signal, and thread decisions and the failure catalog | `systems-programming` |
 | Full pipeline | `engineer-workflow` |

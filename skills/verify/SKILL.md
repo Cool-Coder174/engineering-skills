@@ -140,7 +140,11 @@ on concurrent execution of the same operation?
 
 Run the applicable sections of
 `data-systems-design/references/hazard-catalog.md` (use its "Quick scan order") against the
-implemented code:
+implemented code.
+
+If the phase touches a file, a directory, a process, a signal, a thread, or a socket, also
+run `systems-programming/references/failure-catalog.md` and report the `S-` IDs in the same
+table:
 
 ```md
 ### Hazard Scan
@@ -259,4 +263,5 @@ Append the report to `executor.md` under `## Phase F<N>` and do not create new f
 | The spec being verified | `detail-planning` |
 | Fix the findings | `implement` |
 | Hazard catalog | `data-systems-design` |
+| Failure catalog for file, process, signal, and thread code | `systems-programming` |
 | Full pipeline | `engineer-workflow` |

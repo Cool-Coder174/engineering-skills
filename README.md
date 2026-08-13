@@ -61,31 +61,45 @@ skills/
 │       ├── 05-database-selection.md        # Evaluation method, B-tree vs LSM, RUM conjecture
 │       ├── 06-simplicity-and-design-laws.md # Six laws, three flaws, over-engineering tests
 │       └── 07-reference-architectures.md   # Fan-out, chat, crawler, file sync, autocomplete…
-└── data-systems-design/            # Whether it stays CORRECT
-    ├── SKILL.md                    # Decision tables, design record, language discipline
+├── data-systems-design/            # Whether it stays CORRECT
+│   ├── SKILL.md                    # Decision tables, design record, language discipline
+│   └── references/
+│       ├── 01-reliability-scalability-maintainability.md
+│       ├── 02-data-models.md
+│       ├── 03-storage-and-retrieval.md
+│       ├── 04-encoding-and-evolution.md
+│       ├── 05-replication.md
+│       ├── 06-partitioning.md
+│       ├── 07-transactions.md
+│       ├── 08-distributed-systems-faults.md
+│       ├── 09-consistency-and-consensus.md
+│       ├── 10-batch-processing.md
+│       ├── 11-stream-processing.md
+│       ├── 12-correctness-and-integrity.md
+│       └── hazard-catalog.md       # 48 named hazards: signature → consequence → fix
+└── systems-programming/            # Whether the CODE survives the kernel
+    ├── SKILL.md                    # 5 syscall rules, 7 file recipes, review scan, glossary
     └── references/
-        ├── 01-reliability-scalability-maintainability.md
-        ├── 02-data-models.md
-        ├── 03-storage-and-retrieval.md
-        ├── 04-encoding-and-evolution.md
-        ├── 05-replication.md
-        ├── 06-partitioning.md
-        ├── 07-transactions.md
-        ├── 08-distributed-systems-faults.md
-        ├── 09-consistency-and-consensus.md
-        ├── 10-batch-processing.md
-        ├── 11-stream-processing.md
-        ├── 12-correctness-and-integrity.md
-        └── hazard-catalog.md       # 48 named hazards: signature → consequence → fix
+        ├── 01-file-descriptors-and-io.md    # fds, short counts, atomicity, fsync, mmap, locks
+        ├── 02-files-and-directories.md      # stat, links, rename, durable update, path safety
+        ├── 03-standard-io-and-buffering.md  # Buffer modes, flush vs fsync, fork duplication
+        ├── 04-processes-and-execution.md    # fork/exec/wait, exit status, races, daemon rules
+        ├── 05-signals.md                    # sigaction, async-signal-safety, EINTR, self-pipe
+        ├── 06-threads-and-concurrency.md    # Mutexes, condvars, lock order, fork with threads
+        ├── 07-ipc-and-sockets.md            # Pipes, framing, shared memory, fd passing
+        ├── 08-toolchain-and-machine-model.md # Assemble/link/load, symbols, storage classes
+        └── failure-catalog.md      # 55 named failures: signature → consequence → fix
 ```
 
 Each skill is a self-contained folder with a `SKILL.md`, which is the layout Claude Code,
 Cursor, and compatible agents expect.
 
-**The two design skills split the problem deliberately.** `system-design` decides *what to
-build* — scope, capacity, components, trade-offs. `data-systems-design` decides *whether it
-stays correct* — isolation, replication, ordering, hazards. A new service runs both; adding
-a retry to an existing call runs only the second.
+**The three engineering skills split the problem deliberately.** `system-design` decides
+*what to build* — scope, capacity, components, trade-offs. `data-systems-design` decides
+*whether it stays correct* across machines — isolation, replication, ordering, hazards.
+`systems-programming` decides *whether the code survives one kernel* — short reads, atomicity,
+durability, signals, threads. A new service runs the first two; a file-ingest pipeline or a
+daemon runs the third; adding a retry to an existing call runs only the second.
 
 ---
 
@@ -108,16 +122,16 @@ On Windows (PowerShell):
 Copy-Item -Recurse -Force skills\* $HOME\.cursor\skills\
 ```
 
-Skills are discovered automatically by name. `data-systems-design` must be installed for
-the other skills' hazard scans to resolve their references.
+Skills are discovered automatically by name. `data-systems-design` and `systems-programming`
+must be installed for the other skills' hazard and failure scans to resolve their references.
 
 ---
 
 ## The pipeline
 
 ```
-PLANNING → ARCHITECTURE GATE → DESIGN GATE → DETAIL PLANNING → IMPLEMENT → VERIFY → REVIEW
- plan.md   plan.md##Architecture  plan.md##Design  executor.md     code      report   findings
+PLANNING → ARCHITECTURE GATE → DESIGN GATE → SYSTEMS GATE → DETAIL PLANNING → IMPLEMENT → VERIFY → REVIEW
+ plan.md   plan.md##Architecture  plan.md##Design  plan.md##Systems  executor.md    code     report   findings
 ```
 
 | Command | What happens |
@@ -127,6 +141,7 @@ PLANNING → ARCHITECTURE GATE → DESIGN GATE → DETAIL PLANNING → IMPLEMENT
 | `design` / `system design` | Run the 7-step design method, estimation, and simplicity pass |
 | `estimate` | Just the back-of-the-envelope numbers |
 | `data design` | Run the data-systems design gate and hazard scan |
+| `systems` / `low level` | Run the systems gate: syscall rules, file recipes, failure scan |
 | `detail F1` | Expand phase F1 into a spec with contracts, failure modes, rollback |
 | `implement F1` | Write the code, enforcing the robustness invariants |
 | `verify F1` | Compare code to spec, with file-and-line evidence |
@@ -278,6 +293,10 @@ Nothing requires the full pipeline:
   It's also useful as a review lens on an architecture someone else wrote.
 - `data-systems-design` answers correctness questions on its own ("should this be
   serializable?", "is this partition key safe?").
+- `systems-programming` answers low-level questions on its own ("how do I replace this file
+  without losing it on a crash?", "why does my progress output vanish in a pipeline?", "is
+  this signal handler safe?", "why is this `undefined reference` when the library is right
+  there?"). Its file-management recipes stand alone for ingest and indexing pipelines.
 - `planner` is useful alone for turning a vague request into a grounded plan.
 
 ---
@@ -297,6 +316,7 @@ Skills previously lived as flat files at the repository root. They are now folde
 | `code-review.md` | `skills/code-review/SKILL.md` |
 | — | `skills/data-systems-design/` (new) |
 | — | `skills/system-design/` (new) |
+| — | `skills/systems-programming/` (new) |
 
 If you installed the old flat files, remove them before installing the new folders so the
 agent does not load two versions of the same skill.
@@ -330,6 +350,11 @@ Concepts, terminology, methodology, and reference numbers come from:
   methodology, storage engine trade-offs, and the RUM conjecture.
 - [*Code Simplicity: The Science of Software Development*][cs] — Max Kanat-Alexander
   (O'Reilly, 2012). The laws of software design and the anti-over-engineering discipline.
+- [*Advanced Programming in the UNIX Environment*][apue] — W. Richard Stevens and Stephen A.
+  Rago (Addison-Wesley, 3rd ed., 2013). The system call semantics, atomicity rules, file
+  management, signals, and threads throughout `systems-programming`.
+- [*Systems Programming*][donovan] — John J. Donovan (McGraw-Hill, 1972). The machine model,
+  the design procedure for a system program, and the four functions of a loader.
 
 This repository contains original prose applying those concepts to agent workflows. It is
 not a reproduction of any of the books, and reading them is still strongly recommended.
@@ -339,3 +364,5 @@ not a reproduction of any of the books, and reading them is still strongly recom
 [grok]: https://www.designgurus.io/course/grokking-the-system-design-interview
 [dbi]: https://www.databass.dev/
 [cs]: https://www.codesimplicity.com/
+[apue]: https://www.apuebook.com/
+[donovan]: https://archive.org/details/systemsprogrammi0000dono
