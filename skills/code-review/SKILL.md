@@ -1,68 +1,93 @@
 ---
 name: code-review
-description: Multi-mode code review engine with five commands (/review-diff, /review-uncommitted, /review, /review-inscope, /review-data) for branch diffs, uncommitted changes, full repository audits, scope-locked task reviews, and data/distributed-systems hazard audits. Produces severity-ranked findings with concrete fixes, a mandatory hazard scan, and merge-readiness verdicts.
+description: Multi-mode code review engine with six commands (/review-diff, /review-uncommitted, /review, /review-inscope, /review-data, /review-security) for branch diffs, uncommitted changes, full repository audits, scoped task reviews, data/distributed-systems hazard audits, and adversarial security review. Produces severity-ranked findings with concrete fixes, hazard and vulnerability scans, scope checks, and merge-readiness verdicts. Use when reviewing code, PRs, diffs, uncommitted changes, auditing a repo, or assessing security risk.
 ---
 
 # CODE REVIEW ENGINE
 
-**ROLE:** Senior reviewer, security auditor, and merge-readiness analyst.
-**CORE FUNCTION:** Produce structured, evidence-backed, severity-ranked reviews that find
-real defects — with a mandatory scan for the data and distributed-systems hazards that
-ordinary review misses because they only manifest under concurrency, failure, or scale.
+**ROLE:** Senior code reviewer, security auditor, and merge-readiness analyst.
+**CORE FUNCTION:** Perform structured, severity-ranked reviews across six modes, producing
+findings that name a file, a line, a consequence, and a fix — and a verdict someone can act
+on.
+
+**Companion knowledge skills.** This skill decides *what to look for*; two gate skills supply
+the named failure modes:
+
+| Gate | Skill | Catalog | Applies when the diff touches |
+|---|---|---|---|
+| Data hazards | `data-systems-design` | `references/hazard-catalog.md` (H-01 …) | Persistence, concurrency, retries, queues, replication, caching |
+| Security vulnerabilities | `security-engineering` | `references/vulnerability-catalog.md` (V-01 …) | Secrets, crypto, identity, authorization, untrusted input, availability |
+
+Load the relevant catalog before reviewing. Cite findings by ID (`H-14`, `V-32`) so that
+`planner` and `verify` can trace them.
+
+The two deep modes mirror each other: `/review-data` asks *will this stay correct?*,
+`/review-security` asks *will this stay correct when someone is actively trying to break it?*
+A change to a payment path, an auth flow, or a multi-tenant query usually deserves both.
 
 ---
 
-# 1. COMMANDS
+# 1. COMMAND OVERVIEW & ACTIVATION
 
-| Command | Activation | Scope |
+| Command | Activation keywords | Scope |
 |---|---|---|
-| `/review-diff` | `review-diff`, `review diff`, `review branch`, `review PR` | Current branch vs. base |
-| `/review-uncommitted` | `review-uncommitted`, `review changes`, `review staged`, `review working tree` | Uncommitted working tree |
-| `/review` | `review`, `review repo`, `full review`, `audit` | Full repository |
-| `/review-inscope` | `review-inscope`, `review task`, `scope check` | Only changes relevant to a stated task |
+| `/review-diff` | `review-diff`, `review diff`, `review branch`, `review PR` | Current branch vs base branch |
+| `/review-uncommitted` | `review-uncommitted`, `review uncommitted`, `review changes`, `review staged` | Uncommitted working tree changes |
+| `/review` | `review`, `review repo`, `full review`, `audit` | Full repository, end to end |
+| `/review-inscope` | `review-inscope`, `review in scope`, `review task`, `scope check` | Only changes relevant to a stated task |
 | `/review-data` | `review-data`, `data review`, `hazard scan`, `distributed review` | Data, concurrency, and distribution hazards |
+| `/review-security` | `review-security`, `security review`, `threat model`, `pentest this`, `is this secure` | Adversarial security review of a diff, component, or repo |
 
-These are commands, not conversation. When one is invoked, the system enters **Review
-Mode**: no implementing, no scaffolding, no "while I'm here" fixes, until the review is
-delivered.
+**Interpretation rule.** Any occurrence of these terms MUST be treated as a review command,
+not conversational language.
 
-One complete review per invocation. Do not combine modes.
+**Mode switch.** When activated, the system enters **Review Mode**. Default assistant
+behaviors — immediate coding, exploration narration, implementation suggestions — are
+OVERRIDDEN until the review output is complete.
+
+**Choosing a mode.** One command per invocation. If the user asks for a general review of a
+change that touches authentication, cryptography, or untrusted input, run the general mode and
+attach the Vulnerability Scan (Section 9.2) — or say that `/review-security` is warranted and
+why. Same rule for data hazards and `/review-data`.
 
 ---
 
-# 2. UNIVERSAL OUTPUT FORMAT
+# 2. UNIVERSAL OUTPUT FORMAT (ALL COMMANDS)
+
+Every review command MUST produce output in this structure:
 
 ```md
-## Code Review: [Mode] — [Target]
+## Code Review: [Mode] — [Target Description]
 
 ### Summary
-[1–3 sentences: what was reviewed, overall assessment, the single most important concern]
+[1–3 sentence overview: what was reviewed, overall assessment, the single biggest concern]
 
 ### What Was Reviewed
 - Scope: [files, commits, diff range, or full repo]
-- Volume: [files / lines / commits]
-- Exclusions: [what was skipped and why, or "None"]
+- Volume: [number of files / lines / commits]
+- Exclusions: [anything skipped and why, or "None"]
 
 ### 🔴 Critical Issues (Blockers)
 | # | File | Line(s) | Issue | Why It Blocks |
-|---|---|---|---|---|
-| 1 | `path/file.ext` | 42–50 | [Description] | [Concrete impact] |
+|---|------|---------|-------|---------------|
+| 1 | `path/file.ext` | 42–50 | [Description] | [Impact] |
 
 > If none: "No critical issues found."
 
 ### 🟡 Medium-Risk Issues
 | # | File | Line(s) | Issue | Risk |
-|---|---|---|---|---|
+|---|------|---------|-------|------|
+| 1 | `path/file.ext` | 12 | [Description] | [Risk explanation] |
 
 > If none: "No medium-risk issues found."
 
 ### 🔵 Nits / Polish
-- `file.ext:8` — [Nit]
+- `file.ext:8` — [Nit description]
 
 > If none: "No nits."
 
-### Hazard Scan
-[Section 3 — MANDATORY in every mode]
+### Hazard, Failure & Vulnerability Scan
+[Section 9 — only the applicable gates, only the applicable entries]
 
 ### Scope Check
 - [x] All changes are in scope
@@ -70,255 +95,280 @@ One complete review per invocation. Do not combine modes.
 - [x] No missing in-scope work
 
 ### Missing Validation
-- [ ] [Test / lint / build / typecheck not run or absent]
+- [ ] [Test / lint / build / typecheck step not run or absent]
 - [ ] [Edge case without coverage]
 
 > If none: "All expected validation is present."
 
 ### Recommended Next Steps
-1. [Specific, actionable]
+1. [Specific, actionable fix or follow-up]
+2. [Specific, actionable fix or follow-up]
 
 ### Verdict: [NOT READY | MOSTLY READY | READY WITH MINOR FIXES]
-[One sentence justifying it]
+[One-sentence justification for the verdict]
 ```
 
 ---
 
-# 3. HAZARD SCAN (MANDATORY IN EVERY MODE)
+# 3. /review-diff — BRANCH DIFF REVIEW
 
-Run `data-systems-design/references/hazard-catalog.md` against the reviewed code, following
-its **Quick scan order**:
+## 3.1 Activation
 
-1. Any read-then-write? → H-01, H-02, H-03, H-04
-2. Any schema/API/payload change? → H-09…H-13
-3. Any network call, retry, or queue consumer? → H-14…H-18, H-34
-4. Any write to more than one system? → H-32, H-24, H-40
-5. Any lock, leader, or scheduled job? → H-22, H-23, H-39
-6. Any timestamp used for logic? → H-20, H-21, H-36
-7. Any new query, index, or partition key? → H-29, H-31, H-42, H-43
-8. Any cache? → H-44
-9. Does anything here need a rollback? → H-46, H-38
+`/review-diff`, `review diff`, `review branch`, `review PR`, `review this branch against main`
 
-```md
-### Hazard Scan
-| Hazard | Status | Evidence | Fix |
-|---|---|---|---|
-| H-01 Lost update | 🔴 Present | `wallet.py:88` read-modify-write on `balance` | `UPDATE … SET balance = balance + ?` |
-| H-15 Missing timeout | 🟡 Present | `client.py:30` `requests.post` with no timeout | Add an explicit timeout + jittered retry |
-| H-32 Dual write | ✓ Clear | Single write path via outbox | — |
+## 3.2 Protocol
 
-Not applicable: H-20…H-24 (no distributed coordination in this change).
-```
+1. **Identify base and head.** Default base: `main`. Respect user overrides.
+2. **Collect the diff.** `git diff main...HEAD`. List all changed files.
+3. **Review every changed file** against these criteria:
+   - **Correctness:** logic errors, off-by-one, null/undefined safety, race conditions, incorrect state transitions
+   - **Regressions:** behavior changes in existing code paths that break callers or consumers
+   - **Architecture drift:** does the change violate existing patterns, conventions, or module boundaries?
+    - **Security:** run the Section 9.2 trigger check; if any trigger fires, load the vulnerability catalog
+    - **Data hazards:** run the Section 9.1 trigger check; if any fires, load the hazard catalog
+    - **Systems failures:** run the Section 9.3 trigger check; if any fires, load the failure catalog
+   - **Performance:** N+1 queries, unbounded loops, missing pagination, blocking I/O on hot paths, leaks
+   - **Test coverage:** are new code paths tested? Are existing tests invalidated by the change?
+   - **Risky patterns:** raw SQL with interpolation, unvalidated input, panic/unwrap in production paths, broad exception swallowing
+4. **Flag out-of-scope changes.** Files or hunks unrelated to the branch's purpose.
+5. **Identify PR blockers.** Unresolved review comments, failing CI, missing approvals, merge conflicts.
+6. **Invoke babysit behavior** (mandatory final step — Section 3.3).
+7. **Produce output** in the universal format with the babysit addendum.
 
-**Systems-level trigger.** If the diff touches a file, a directory, a process, a signal, a
-thread, a pipe, or a socket, also run
-`systems-programming/references/failure-catalog.md` and report findings by their `S-` IDs.
-That catalog covers the faults the hazard catalog does not reach: short reads and writes,
-`EINTR`, non-atomic call pairs, a missing `fsync`, a write over a file in place, and unsafe
-signal handlers. It applies in every language, not only C.
+## 3.3 Babysit Integration (MANDATORY)
 
-**Honesty rule:** if a change has no data, concurrency, or distribution surface, write
-`Hazard scan: not applicable — [reason]` and move on. Inventing hazards to look thorough
-destroys the signal that makes this section useful.
+After the review output, `/review-diff` MUST append:
 
----
-
-# 4. `/review-diff` — BRANCH DIFF REVIEW
-
-## 4.1 Protocol
-1. **Identify base and head.** Default base `main`; respect overrides.
-2. **Collect the diff:** `git diff <base>...HEAD`, plus the commit list. Read the changed
-   files in full where the diff alone is ambiguous — a diff hides the context that makes a
-   change wrong.
-3. **Review every changed file** against:
-   - **Correctness:** logic errors, off-by-one, null/undefined safety, incorrect state
-     transitions, error paths that can't be reached
-   - **Concurrency:** the section-A hazards; anything that assumes single-threaded execution
-   - **Regressions:** behavior changes that break existing callers or consumers
-   - **Compatibility:** would this break during a rolling deploy, or break an old client?
-   - **Architecture drift:** violates existing patterns, module boundaries, layering
-   - **Security:** injection, auth bypass, secrets, unsafe defaults, missing validation,
-     IDOR/missing authorization on new routes, SSRF on new outbound calls
-   - **Performance:** N+1, unbounded queries, blocking I/O on hot paths, missing pagination,
-     leaks
-   - **Test coverage:** are the new paths tested? Did the change invalidate existing tests?
-   - **Operability:** can it be rolled back? Is it observable? Is it behind a flag?
-4. **Flag out-of-scope changes** unrelated to the branch's purpose.
-5. **Run the hazard scan** (Section 3).
-6. **Append the babysit block** (Section 4.2).
-
-## 4.2 Babysit block (mandatory for `/review-diff`)
 ```md
 ### Babysit Status
-- **PR Comments:** [N total, N resolved, N unresolved]
-- **CI Status:** [Passing / Failing — each failure with its root cause]
-- **Merge Conflicts:** [None / conflicting files]
-- **Unresolved Threads:**
+- **PR Comments:** [N total, N resolved, N unresolved — triage below]
+- **CI Status:** [Passing / Failing — list failures with root cause]
+- **Merge Conflicts:** [None / list conflicting files]
+- **Unresolved Review Threads:**
   | # | Author | Comment | Triage |
-  |---|---|---|---|
-  | 1 | @reviewer | [Summary] | Agree — fix X / Disagree — [reason] / Needs clarification |
+  |---|--------|---------|--------|
+  | 1 | @reviewer | [Summary] | Agree — fix recommended / Disagree — [reason] / Needs clarification |
 - **Merge Readiness:** [Ready / Blocked — reason]
 ```
 
 Triage rules: **agree** → recommend the specific fix; **disagree** → explain the reasoning;
-**unsure** → flag for a human, do not guess; **CI failure** → scoped fix recommendation
-only; **merge conflict** → recommend a resolution only when the intent is unambiguous.
+**unsure** → flag for human decision, do not guess. For a **CI failure**, give a scoped fix
+recommendation, not a broad change. For a **merge conflict**, recommend resolution only when
+the intent is unambiguous.
 
-## 4.3 Priority order
-Correctness & concurrency → security → compatibility/migration safety → missing tests →
-architecture drift → performance → out-of-scope → nits.
+## 3.4 Priority Order
 
----
-
-# 5. `/review-uncommitted` — WORKING TREE REVIEW
-
-Primary purpose: catch work that **looks finished but isn't**.
-
-## 5.1 Protocol
-1. Collect `git diff`, `git diff --cached`, and untracked files.
-2. Categorize: modified / added / deleted / renamed / untracked.
-3. Hunt for incompleteness:
-   - Functions declared but not implemented; placeholder or hardcoded return values
-   - `TODO` / `FIXME` / `XXX` added in this change
-   - Broken flows: caller updated but callee not (or vice versa); mismatched signatures;
-     dangling references
-   - Debug leftovers: `console.log`, `print()`, `debugger`, `dbg!()`, `binding.pry`,
-     commented-out code, temporarily disabled tests, hardcoded test credentials
-   - Missing imports; unused imports
-   - Accidental deletions
-   - Partially applied refactors: renamed in one place, not in consumers
-   - Missing follow-through: config changed but no migration; type changed but serialization
-     not updated; route added but not registered; env var read but not documented or defaulted
-   - Errors swallowed silently (`catch {}`, `except: pass`)
-   - New routes without auth/authorization middleware
-   - Schema change without a migration file
-   - Feature flags hardcoded on or off
-   - Tests that assert nothing, are `.skip`/`.only`, or assert a mock's own return
-4. **Check build feasibility:** would this break build, lint, typecheck, or test? Run them
-   if possible and report actual results.
-5. Run the hazard scan.
-
-## 5.2 Priority order
-Broken flows & incomplete edits → secrets/debug leftovers → build/type failures → missing
-follow-through → partial refactors → hazards → nits.
+1. Security vulnerabilities that are exploitable as written
+2. Correctness and regressions
+3. Data-integrity hazards
+4. Missing tests
+5. Architecture drift
+6. Performance
+7. Out-of-scope changes
+8. Nits and style
 
 ---
 
-# 6. `/review` — FULL REPOSITORY AUDIT
+# 4. /review-uncommitted — UNCOMMITTED CHANGES REVIEW
 
-## 6.1 Protocol
-1. **Map the repository:** structure, entry points, config, dependency manifests, test
-   suites, CI, deploy, migrations.
-2. **Code quality:** naming consistency, module structure, coupling/cohesion, complexity
-   hotspots, significant duplication, dead code and stale flags.
-3. **Architecture:** dependency direction and cycles, layering, data flow consistency, error
-   propagation strategy, state management, API surface coherence.
-4. **Data architecture** (load `data-systems-design`): sources of truth and derived stores,
-   any dual writes, schema evolution practice, index hygiene, transaction boundaries,
-   partitioning, caching strategy, background job safety.
-5. **Test coverage:** are critical paths tested? Are the tests meaningful? Integration and
-   end-to-end gaps; flaky/skipped tests; concurrency tests for concurrent code paths.
-6. **Dependencies:** known CVEs, unmaintained packages, duplicate functionality, license
-   compatibility, lockfile present and consistent.
-7. **Security:** secrets in code or history, insecure defaults (open CORS, debug in prod,
-   permissive auth), missing input validation, injection vectors, cryptographic misuse,
-   authorization gaps, unsafe deserialization.
-8. **Error handling & logging:** errors handled rather than swallowed; structured, useful
-   logs without secrets or PII; crash paths; graceful degradation.
-9. **Performance:** N+1s, unbounded collections, blocking I/O, missing indexes for hot
-   queries, resource leaks (connections, handles, subscriptions, listeners).
-10. **Reliability & operability:** timeouts and retries on every external call; bounded
-    queues; health checks; monitored invariants; rollback capability; runbooks; backup and
-    **tested** restore.
-11. **Release readiness:** shippable state, incomplete features behind flags, current
-    documentation, functional CI/CD.
+## 4.1 Activation
 
-## 6.2 Priority order
-Security & secrets → correctness and data-integrity risk → reliability gaps (timeouts,
-retries, unbounded resources) → architecture & maintainability → test gaps → dependency
-risk → error handling → performance → code quality → release readiness.
+`/review-uncommitted`, `review uncommitted`, `review changes`, `review staged`,
+`review working tree`
+
+## 4.2 Protocol
+
+1. **Collect changes.** `git diff` (unstaged) + `git diff --cached` (staged) + untracked files.
+2. **Categorize.** Modified, added, deleted, renamed, untracked.
+3. **Review for incompleteness** (the primary focus of this mode):
+   - **Incomplete edits:** functions declared but not implemented, placeholder returns, inline TODO/FIXME
+   - **Broken flows:** callers updated but callees not (or vice versa), mismatched signatures, dangling references
+   - **Debug leftovers:** `console.log`, `print()`, `debugger`, `dbg!()`, test-only flags in production code
+   - **Security leftovers:** a commented-out auth check, `verify=False` added "temporarily", a hardcoded test token, an `if (isDev)` bypass — see **V-60** and **V-32**
+   - **Secrets:** a key, token, or password added to a tracked file, including untracked-but-about-to-be-committed `.env` — see **V-14**
+   - **Formatting/lint risks:** obvious style violations, missing imports, unused imports
+   - **Accidental deletions:** files or code blocks removed without corresponding cleanup
+   - **Partially implemented refactors:** some call sites updated, others missed
+   - **Missing follow-through:** config changed but migration not created, type changed but serialization not updated, route added but not registered
+4. **Check build feasibility.** Would these changes break `build`, `lint`, `typecheck`, or `test`?
+5. **Produce output** in the universal format.
+
+## 4.3 "Looks Finished But Isn't" Detection
+
+This is the primary value of `/review-uncommitted`. Hunt specifically for:
+
+- Functions that return hardcoded or placeholder values
+- Error handlers that swallow errors silently (`catch {}`, `except: pass`)
+- **New API routes without authentication or authorization middleware** (V-43)
+- **A security check wrapped in a `try` that continues on failure** (V-64)
+- Database schema changes without corresponding migration files
+- UI components that reference non-existent props, state, or context
+- Feature flags hardcoded to on or off
+- Imports added but never used (or removed but still referenced elsewhere)
+- Tests that assert nothing, are marked `.skip`/`.only`, or test a no-op
+- New config keys without documentation or defaults
+- Async operations without error handling or timeout
+
+## 4.4 Priority Order
+
+1. Secrets and security bypasses left in the working tree
+2. Broken flows and incomplete edits
+3. Debug leftovers and accidental deletions
+4. Build/lint/typecheck failures
+5. Missing follow-through
+6. Partially implemented refactors
+7. Nits and formatting
 
 ---
 
-# 7. `/review-inscope` — SCOPED TASK REVIEW
+# 5. /review — FULL REPOSITORY REVIEW
 
-Requires a stated task. If it is unclear, ask before reviewing.
+## 5.1 Activation
 
-## 7.1 Protocol
-1. **Identify and restate the task.**
-2. **Collect the changes** (branch or uncommitted, whichever has content).
-3. **Verify coverage:** does every stated *and implied* requirement have a corresponding
-   change? Implied requirements normally include tests, migrations, docs, error handling,
-   authorization, and observability.
-4. **Flag out-of-scope edits:** unrelated files, unrequested refactors, unrelated dependency
-   bumps, style-only churn.
-5. **Flag missing in-scope work.**
-6. **Check for regressions introduced by the fix:** broken existing behavior, side effects
-   in shared paths, backwards compatibility.
-7. **Assess shipping readiness:** would CI pass? Is it reviewable? Self-contained?
-8. Run the hazard scan.
+`/review`, `review repo`, `full review`, `audit`, `review everything`
 
-## 7.2 Mandatory tables
+## 5.2 Protocol
+
+1. **Map the repository.** Structure, entry points, config files, dependency manifests, test
+   suites, CI configuration.
+2. **Code quality audit.** Naming consistency, file organization, module structure;
+   maintainability (coupling, cohesion, complexity hotspots); significant duplication; dead
+   code.
+3. **Architecture review.** Module boundaries and dependency direction; data flow patterns;
+   error propagation strategy; state management; API surface area.
+4. **Test coverage assessment.** Are critical paths tested? Are tests meaningful? Missing
+   integration/E2E coverage? Test hygiene — flaky, skipped, or never-failing tests.
+5. **Dependency audit.** Known vulnerabilities (CVEs); outdated dependencies with pending
+   breaking changes; unnecessary dependencies; license compatibility. Also check how
+   dependencies are pinned (**V-61**).
+6. **Security review.** Run the full `/review-security` protocol (Section 8) across the
+   repository, and report its Vulnerability Scan as a subsection here. Do not substitute a
+   shallow secrets grep for it.
+7. **Data hazard review.** Run the `/review-data` protocol (Section 7) against the persistence,
+   concurrency, and messaging layers, and report its Data Topology and Hazard Scan here.
+8. **Error handling and logging.** Errors handled rather than swallowed? Logging structured
+   and useful, and free of secrets (**V-58**)? Panic/crash paths in production code? Graceful
+   degradation, and does it fail closed (**V-64**)?
+9. **Performance review.** N+1 queries, unbounded collections, blocking I/O on the main
+   thread, missing caching, resource leaks.
+10. **Release readiness.** Shippable state? Incomplete features behind flags? Documentation
+    current? CI/CD functional?
+11. **Produce output** in the universal format with an expanded subsection per audit area.
+
+## 5.3 Priority Order
+
+1. Exploitable security vulnerabilities and exposed secrets
+2. Correctness and data-integrity risks
+3. Architecture and maintainability
+4. Test coverage gaps
+5. Dependency risks
+6. Error handling and logging
+7. Performance
+8. Code quality and consistency
+9. Release readiness
+
+---
+
+# 6. /review-inscope — SCOPED TASK REVIEW
+
+## 6.1 Activation
+
+`/review-inscope`, `review in scope`, `review task`, `scope check`, `review against task`
+
+The user MUST provide, or have previously stated, the task being worked on. If the task is
+unclear, ask before reviewing.
+
+## 6.2 Protocol
+
+1. **Identify the task.** Extract from the user message, issue reference, or conversation.
+   Restate it for confirmation.
+2. **Identify all changes.** Collect the diff (branch or uncommitted — whichever has content).
+3. **Verify the implementation covers the task.** Does every stated or implied requirement have
+   a corresponding change? Are there placeholders where implementation should be? Is it
+   complete end to end?
+4. **Flag out-of-scope edits.** Unrelated files, unrequested refactors, unrelated dependency
+   updates, style-only changes in untouched areas.
+5. **Flag missing in-scope work.** Tests, documentation, migrations, config, error handling —
+   and **security work implied by the task**. A task that adds an endpoint implies an
+   authorization check; a task that stores a credential implies hashing and a rotation story.
+   Missing implied security work is a **missing requirement**, not a nit.
+6. **Check for regressions introduced by the fix.** Broken existing behavior, side effects in
+   shared paths, backwards compatibility.
+7. **Assess shipping readiness.** Would it pass CI? Is it reviewable? Self-contained?
+8. **Produce output** in the universal format with the scope comparison table.
+
+## 6.3 Scope Comparison Table (MANDATORY)
+
 ```md
 ### Scope Comparison
 | Task Requirement | Status | Evidence |
-|---|---|---|
-| [Requirement 1] | ✓ Implemented | `file.ts:42` |
-| [Requirement 2] | ✗ Missing | Not found in diff |
-| [Requirement 3] | ⚠ Partial | Started in `file.ts:60`, error path not handled |
+|------------------|--------|----------|
+| [Requirement 1 from the task] | ✓ Implemented | `file.ts:42` |
+| [Requirement 2 from the task] | ✗ Missing | Not found in diff |
+| [Requirement 3 — implied: authorize the new route] | ⚠ Partial | Handler authenticates but never authorizes (V-43) |
 
 ### Out-of-Scope Changes
 | File | Change | Relation to Task |
-|---|---|---|
-| `unrelated.ts` | Reformatted imports | None — split into a separate PR |
+|------|--------|------------------|
+| `unrelated.ts` | Reformatted imports | None — remove or split to a separate PR |
 ```
 
-## 7.3 Priority order
-Missing in-scope work → regressions → incomplete implementation → out-of-scope edits →
-shipping readiness → nits.
+## 6.4 Priority Order
+
+1. Missing in-scope work (including implied security work)
+2. Regressions introduced by the fix
+3. Out-of-scope edits
+4. Incomplete implementation
+5. Shipping readiness
+6. Nits
 
 ---
 
-# 8. `/review-data` — DATA & DISTRIBUTED SYSTEMS AUDIT
+# 7. /review-data — DATA & DISTRIBUTED SYSTEMS AUDIT
 
-A focused deep audit for systems where correctness under concurrency, failure, and scale is
+A focused deep audit for changes where correctness under concurrency, failure, and scale is
 the primary risk. Load `data-systems-design` and its references.
 
-## 8.1 Protocol
-1. **Map the data topology:** every datastore, cache, index, queue, and external system.
-   For each, identify whether it is a **source of truth** or **derived** — and how derived
-   data is kept in sync. Any application-code dual write is a 🔴 finding (H-32).
+## 7.1 Activation
+
+`/review-data`, `data review`, `hazard scan`, `distributed review`
+
+## 7.2 Protocol
+
+1. **Map the data topology:** every datastore, cache, index, queue, and external system. For
+   each, identify whether it is a **source of truth** or **derived** — and how derived data is
+   kept in sync. Any application-code dual write is a 🔴 finding (H-32).
 2. **Schema & evolution:** recent and pending migrations audited against expand→migrate→
    contract; nullability and defaults; blocking DDL; backfill safety; retired-field reuse.
    (`references/04-encoding-and-evolution.md`)
-3. **Transactions & concurrency:** enumerate every read-then-write and confirm its
-   protection mechanism; identify check-then-act write-skew patterns; verify uniqueness is
-   enforced by an index; check for external side effects inside transactions; check for a
-   retry loop where serializable isolation is used.
-   (`references/07-transactions.md`)
+3. **Transactions & concurrency:** enumerate every read-then-write and confirm its protection
+   mechanism; identify check-then-act write-skew patterns; verify uniqueness is enforced by an
+   index; check for external side effects inside transactions; check for a retry loop where
+   serializable isolation is used. (`references/07-transactions.md`)
 4. **Replication & reads:** identify every replica read and check for read-after-write and
    monotonic-read violations; verify replication lag is monitored.
    (`references/05-replication.md`)
-5. **Partitioning:** partition keys checked for hot spots and monotonic keys; scatter/gather
-   on hot paths; rebalancing strategy. (`references/06-partitioning.md`)
-6. **Distributed calls:** timeouts, backoff+jitter, retry layering, idempotency keys and
-   where they are deduplicated, ambiguous-outcome handling, circuit breakers.
+5. **Partitioning:** partition keys checked for hot spots and monotonic keys; scatter/gather on
+   hot paths; rebalancing strategy. (`references/06-partitioning.md`)
+6. **Distributed calls:** timeouts, backoff+jitter, retry layering, idempotency keys and where
+   they are deduplicated, ambiguous-outcome handling, circuit breakers.
    (`references/08-distributed-systems-faults.md`)
 7. **Coordination:** locks, leases, leader election, fencing tokens enforced at the resource,
    scheduled-job overlap protection. (`references/09-consistency-and-consensus.md`)
-8. **Streams & jobs:** ordering requirements, consumer idempotence, consumer lag and
-   retention, dead-letter handling, event-time vs. processing-time windowing, job
-   determinism and resumability. (`references/10-batch-processing.md`, `11-stream-processing.md`)
+8. **Streams & jobs:** ordering requirements, consumer idempotence, consumer lag and retention,
+   dead-letter handling, event-time vs. processing-time windowing, job determinism and
+   resumability. (`references/10-batch-processing.md`, `11-stream-processing.md`)
 9. **Clocks:** every use of time in logic — durations on monotonic clocks, no cross-node
    wall-clock ordering, no LWW where lost writes are unacceptable.
 10. **Integrity:** end-to-end request IDs, dedup at the point of effect, reconciliation and
     invariant monitoring, deletion propagation to derived stores.
     (`references/12-correctness-and-integrity.md`)
-11. **Capacity:** percentile-based SLOs (not averages), unbounded queries and queues,
-    N+1s, cache invalidation and stampede protection, correlated failure modes.
+11. **Capacity:** percentile-based SLOs (not averages), unbounded queries and queues, N+1s,
+    cache invalidation and stampede protection, correlated failure modes.
     (`references/01-reliability-scalability-maintainability.md`)
 
-## 8.2 Additional output sections
+## 7.3 Additional Output Sections
+
 ```md
 ### Data Topology
 | System | Role | Written by | Kept in sync via | Divergence risk |
@@ -339,73 +389,341 @@ the primary risk. Load `data-systems-design` and its references.
 | Duplicate webhook delivery | Duplicate refund | ✗ — needs a dedup key |
 ```
 
-## 8.3 Priority order
-Data loss/corruption → integrity violations → dual writes and divergence → concurrency
-anomalies → migration/compatibility risk → cascading-failure risk (timeouts, unbounded
-resources) → scalability limits → observability gaps.
+## 7.4 Priority Order
+
+1. Data loss or corruption
+2. Integrity violations
+3. Dual writes and divergence
+4. Concurrency anomalies
+5. Migration and compatibility risk
+6. Cascading-failure risk (timeouts, unbounded resources)
+7. Scalability limits
+8. Observability gaps
+
+**Hand off to `/review-security` when** the data path also carries a trust boundary: a
+tenant-scoped query, a token or credential store, an externally triggered webhook, or a queue
+that any client can write to. Divergence between two stores is a data hazard; divergence
+between an authorization decision and the data it guards is a vulnerability.
 
 ---
 
-# 9. REVIEW PRINCIPLES (ALL MODES)
+# 8. /review-security — ADVERSARIAL SECURITY REVIEW
 
-## 9.1 Find real issues, not fluff
-- Every finding cites a specific file and line range.
-- Generic observations ("could be cleaner", "consider adding tests") are forbidden without a
-  concrete example and a specific fix.
-- Show the problematic code next to the correction.
-- **Do not invent findings to fill sections.** "No critical issues found" is a valid,
-  valuable result. A review padded with nits trains people to ignore reviews.
-- Do not report an issue you cannot substantiate. If you suspect something but could not
-  verify it, put it under "Needs human verification" and say what you could not check.
+## 8.1 Activation
 
-## 9.2 Severity
+`/review-security`, `security review`, `security audit`, `threat model`, `is this secure`,
+`pentest this`, `review for vulnerabilities`
 
-| Level | Meaning | Merge impact |
-|---|---|---|
-| 🔴 **Critical** | Correctness bug, security vulnerability, data loss or corruption risk, breaking change, unsafe migration | Blocks |
-| 🟡 **Medium** | Missing tests, risky pattern, performance problem, incomplete error handling, missing observability on a new critical path | Should fix first |
-| 🔵 **Nit** | Style, naming, minor readability, docs | Optional |
+Also invoke automatically as a subsection of `/review` (Section 5.2 step 6), and recommend it
+from any other mode when a Section 9.2 trigger fires on a high-value path (authentication,
+payments, PII, key handling).
 
-**Hazard-catalog findings inherit the catalog's severity.** Anything that causes silent
-data loss or corruption is 🔴 even when it "hasn't happened yet" — these bugs are invisible
-until they are expensive.
+## 8.2 Stance
 
-## 9.3 Actionable feedback
-For everything above nit level: **what** (with file:line), **why** (concrete risk, not
-theoretical), **how** (specific code or clear instruction).
+This mode is different from the others in kind, not just in topic.
 
-## 9.4 Verdicts
+- **Adopt the adversary's goal, not the author's.** The other modes ask "does this work?" This
+  one asks "what does an attacker get, and how?" Read every input as attacker-controlled and
+  every check as bypassable until you find the thing that prevents it.
+- **Absence of a mechanism is a finding.** In correctness review, missing code is usually a
+  nit. Here, a missing authorization check, missing replay protection, or missing integrity
+  check is the vulnerability itself. Look for what is *not* in the diff.
+- **A claimed guarantee with no mechanism is a finding.** Ask which security service each
+  mechanism is meant to provide, then verify it actually provides that one — "it's encrypted"
+  does not provide integrity (V-15), and a valid signature does not provide freshness (V-25).
+- **Report exploitability, not category.** "Uses MD5" is not a finding. "Uses MD5 to derive the
+  password-reset token at `auth/reset.py:44`, so an attacker who knows the user's email and
+  the request second can compute the token" is.
+- **Do not invent findings.** Coverage is judged by the honesty of the scan, not the length of
+  the table. "No applicable vulnerabilities — this change adds a read-only query behind
+  existing authorization" is a good result.
+
+## 8.3 Protocol
+
+1. **Establish the target and the adversary.**
+
+```md
+### Threat Frame
+- Target: [diff / component / repository]
+- Assets: [what is worth attacking here]
+- Adversary: [unauthenticated internet / authenticated user / other tenant / insider / compromised dependency]
+- Adversary capability: [observe / modify / replay / impersonate / execute]
+- Trust boundaries crossed: [list them — each one is where validation and authorization belong]
+- Out of scope: [what is not being defended against here, and why]
+```
+
+2. **Map the attack surface.** Every entry point the change adds or touches: routes, RPC
+   methods, queue consumers, webhooks, file uploads, CLI arguments, environment variables,
+   deserializers, template renders, subprocess invocations, SQL builders.
+
+```md
+### Attack Surface
+| Entry point | Reachable by | Authenticated? | Authorized by | Input validated where | Rate limited |
+|---|---|---|---|---|---|
+```
+
+3. **Trace the data.** For each untrusted input, follow it to every sink — interpreter, buffer,
+   file path, URL, log, template, subprocess. For each secret, follow it from generation to
+   storage to use to disposal.
+
+4. **Run the vulnerability catalog.** Load `security-engineering/references/vulnerability-catalog.md`
+   and work the **Quick scan order** at the end of it. Use the catalog's section structure:
+
+   | Section | Covers | Deep dive, when a finding needs the argument behind it |
+   |---|---|---|
+   | A | Cipher selection and modes | `02-cryptographic-primitives-and-modes.md` |
+   | B | Randomness, keys, and secrets | `03-randomness-and-key-management.md` |
+   | C | Integrity and message authentication | `05-integrity-hashes-and-macs.md` |
+   | D | Authentication protocols and freshness | `06-signatures-and-authentication-protocols.md` |
+   | E | Identity, certificates, and trust distribution | `04-public-key-and-key-exchange.md`, `07-identity-certificates-and-pki.md` |
+   | F | Channel and transport security | `08-transport-and-channel-security.md` |
+   | G | Access control and privilege | `09-authentication-and-access-control.md`, `12-perimeter-and-trusted-systems.md` |
+   | H | Passwords and credential storage | `09-authentication-and-access-control.md` |
+   | I | Audit, detection, and logging | `10-intrusion-detection-and-audit.md` |
+   | J | Untrusted input, malicious code, and availability | `11-malicious-software-and-availability.md` |
+
+   Read a deep dive when you need to *justify* a finding to someone who will push back, or when
+   the correct fix is not obvious from the catalog entry. Do not load all twelve to scan a diff.
+
+5. **Check the services actually delivered.** For each security-relevant flow, fill this in.
+   A "claimed" column with an empty "mechanism" column is the finding.
+
+```md
+### Security Services
+| Flow | Confidentiality | Origin auth | Integrity | Freshness | Access control | Availability |
+|---|---|---|---|---|---|---|
+| [flow] | [mechanism or ✗] | | | | | |
+```
+
+6. **Check detectability.** If this attack succeeded, would anyone know? Verify a security
+   event is emitted, that it reaches a sink the attacker cannot edit, and that someone owns
+   the alert (V-55, V-56, V-57).
+
+7. **Check the failure path.** For every security dependency — policy service, token
+   validator, KMS, certificate store — determine whether failure fails open or closed
+   (V-64).
+
+8. **Produce output** in the universal format, with the Threat Frame, Attack Surface, Security
+   Services, and Vulnerability Scan sections, plus the exploitability addendum below.
+
+## 8.4 Finding Format (MANDATORY in this mode)
+
+Every 🔴 and 🟡 security finding must be reported with all six fields. A finding missing
+"Attack" or "Fix" is not actionable and should not be filed.
+
+```md
+#### 🔴 V-32 — Certificate verification disabled
+- **Location:** `internal/client/http.go:88`
+- **Signature:** `TLSClientConfig{InsecureSkipVerify: true}` on the payments client
+- **Attack:** Anyone able to intercept the route to the payment API — a compromised network
+  hop, a hostile DNS response, an attacker on the pod network — presents any certificate and
+  the client accepts it. The attacker then reads and rewrites payment requests in transit.
+- **Service broken:** Peer entity authentication; integrity and confidentiality follow it.
+- **Reference:** `security-engineering/references/07-identity-certificates-and-pki.md`;
+  Stallings §14.2, p. 419
+- **Fix:** Remove the flag. For the internal CA, load it explicitly into a dedicated cert pool
+  rather than disabling verification. If a test needs a self-signed cert, inject the pool in
+  the test only, and fail startup if `InsecureSkipVerify` is set outside tests.
+```
+
+## 8.5 Exploitability Addendum
+
+```md
+### Exploitability Assessment
+| # | Finding | Preconditions | Adversary needed | Effort | Detectable? |
+|---|---|---|---|---|---|
+| 1 | V-32 | Network position between service and API | Network-adjacent | Low | No — passive attacks leave no trace |
+
+### Attack Chains
+[Where two medium findings compose into a critical one. State the chain explicitly:
+"V-53 (unthrottled reset endpoint) + V-09 (predictable token) = account takeover with no
+credentials." Chains are ranked at the severity of the outcome, not the components.]
+
+### What I Could Not Determine
+[Runtime config, deployment topology, WAF rules, or infrastructure not visible in the
+repository — state the assumption made and what would change the finding. Do not silently
+assume a control exists.]
+```
+
+## 8.6 Priority Order
+
+1. Unauthenticated remote path to code execution, data disclosure, or authentication bypass
+2. Authenticated path to privilege escalation or cross-tenant access
+3. Exposed secrets and key material
+4. Broken cryptography — confidentiality or integrity not actually provided
+5. Missing freshness, replay, and session-lifecycle defects
+6. Missing detection for any of the above
+7. Availability and resource exhaustion
+8. Defense-in-depth and hardening gaps
+
+---
+
+# 9. GATE INTEGRATION
+
+## 9.1 Data hazard gate
+
+**Trigger if the diff touches** any of: persistence, schema or migration, index, cache, queue
+or event stream, background job, replication, sharding, transaction, concurrency, retry,
+multi-service write, or an external API with side effects.
+
+When triggered, load `data-systems-design/references/hazard-catalog.md` and report:
+
+```md
+### Hazard Scan
+| ID | Hazard | Present | Evidence | Required Fix |
+|---|---|---|---|---|
+| H-01 | Read-modify-write lost update | Yes | `wallet.py:88` reads balance, adds, writes | Atomic `UPDATE … SET balance = balance + ?` |
+```
+
+## 9.2 Security vulnerability gate
+
+**Trigger if the diff touches** any of:
+
+| Trigger | Examples in a diff |
+|---|---|
+| Secrets or key material | new env var, `.env`, key file, KMS call, token constant |
+| Cryptography | encrypt/decrypt, hash, sign, verify, TLS config, cipher or mode name |
+| Randomness | `random`, `uuid`, token/salt/nonce generation |
+| Identity | login, signup, session, JWT, OAuth, MFA, password reset, impersonation |
+| Authorization | new route or RPC, role/permission logic, tenant scoping, admin action |
+| Untrusted input | request parsing, upload, deserialization, query building, subprocess, template |
+| Transport | new outbound client, webhook, certificate handling, proxy config |
+| Dependencies | new dependency, changed pin, new install script |
+| Detection | changes to logging, audit records, or alerting |
+
+When triggered, load `security-engineering/references/vulnerability-catalog.md` and report:
+
+```md
+### Vulnerability Scan
+| ID | Vulnerability | Present | Evidence | Required Fix |
+|---|---|---|---|---|
+| V-09 | Non-cryptographic PRNG for a security value | Yes | `auth/token.py:31` uses `random.choices` | `secrets.token_urlsafe(32)` |
+| V-25 | No replay protection | No | Handler dedupes on event ID in the same transaction | — |
+```
+
+In `/review-diff`, `/review-uncommitted`, and `/review-inscope`, the scan covers only the
+catalog sections the trigger table points to. In `/review` and `/review-security`, work the
+full Quick scan order.
+
+## 9.3 Systems failure gate
+
+**Trigger if the diff touches** any of: a file read, write, copy, move, or delete, a directory
+walk or document ingest, a durability or crash-safety requirement, a process that the code
+starts, a signal handler, a daemon or long-lived worker, a thread or shared memory, a pipe, a
+FIFO, or a socket.
+
+When triggered, load `systems-programming/references/failure-catalog.md` and report:
+
+```md
+### Failure Scan
+| ID | Failure | Present | Evidence | Required Fix |
+|---|---|---|---|---|
+| S-11 | Write over a file in place | Yes | `index.py:64` opens the target with `O_TRUNC` | Write a temp file in the same dir, fsync, rename, fsync the dir |
+| S-07 | Durable write with no fsync | Yes | `index.py:71` reports success after `close` | `os.fsync(fd)` before reporting success |
+| S-01 | Unchecked short write | No | Uses `writelines` on a buffered file object | — |
+```
+
+This gate catches what the hazard gate cannot see. The hazard gate asks whether the design
+stays correct across machines. This gate asks whether the code stays correct against one
+kernel. **It applies in every language, not only C** — no runtime makes two calls atomic, and
+no runtime calls `fsync` for you.
+
+## 9.4 Gate honesty
+
+If a gate does not trigger, say so in one line:
+
+```md
+### Hazard, Failure & Vulnerability Scan
+- Data hazard gate: not applicable — no persistence, concurrency, or messaging in this diff.
+- Systems failure gate: not applicable — no file, process, signal, or socket surface.
+- Security gate: not applicable — documentation and test-fixture changes only.
+```
+
+This is a valid and preferred outcome. Padding a scan with inapplicable entries makes the
+gate worthless, because reviewers learn to skim it.
+
+---
+
+# 10. REVIEW PRINCIPLES (ALL COMMANDS)
+
+## 10.1 Find real issues, not fluff
+
+- Every finding MUST cite a specific file and line range.
+- Generic observations ("code could be cleaner") are forbidden without a concrete example and
+  a fix.
+- Prefer showing the problematic code alongside the suggested correction.
+- Never report a finding you cannot state a consequence for.
+
+## 10.2 Severity definitions
+
+| Level | Label | Meaning | Merge impact |
+|---|---|---|---|
+| 🔴 | **Critical** | Correctness bugs, exploitable vulnerabilities, data loss risk, breaking changes | Blocks merge |
+| 🟡 | **Medium** | Missing tests, risky patterns, performance issues, defense-in-depth gaps, incomplete error handling | Should fix before merge |
+| 🔵 | **Nit** | Style, naming, minor readability, documentation | Optional; safe to merge without |
+
+**Security severity is decided by exploitability, not by category.** A weak algorithm on a
+path an attacker cannot reach is 🟡 or 🔵. A missing authorization check on a public endpoint
+is 🔴 even though the change is one line. Two 🟡 findings that chain into an account takeover
+are reported as 🔴 with the chain shown (Section 8.5).
+
+## 10.3 Actionable feedback
+
+For every issue above nit level, provide:
+1. **What** the problem is (with file and line reference)
+2. **Why** it matters (concrete consequence, not theoretical)
+3. **How** to fix it (specific code suggestion or clear instruction)
+
+## 10.4 Verdict definitions
 
 | Verdict | Meaning |
 |---|---|
-| **NOT READY** | Has 🔴 blockers |
-| **MOSTLY READY** | No 🔴, but 🟡 items should be addressed first |
-| **READY WITH MINOR FIXES** | Only 🔵 nits remain |
+| **NOT READY** | Has 🔴 critical blockers. Must fix before merge or ship. |
+| **MOSTLY READY** | No critical issues, but 🟡 items should be addressed first. |
+| **READY WITH MINOR FIXES** | Only 🔵 nits remain. Safe to merge after quick polish. |
+
+A diff with an unresolved 🔴 security finding is **NOT READY**, regardless of how small the
+change is or how much of the rest is correct.
 
 ---
 
-# 10. PACING
+# 11. EXECUTION PACING
 
-- One complete review per invocation.
-- **Do not fix during review.** If the user then says "fix it", switch to implementation
-  mode starting with the 🔴 items.
-- After the output: **STOP**.
+- Each command produces ONE complete review per invocation.
+- Do NOT start implementing fixes unless the user explicitly requests it.
+- After the review output is complete, STOP and await instruction.
+- If the user says "fix it", "apply fixes", or similar → switch to implementation mode for the
+  identified issues, starting with 🔴 critical items.
 
-**Forbidden:** auto-fixing during review, skipping the output format, combining modes,
-vague findings, and omitting the hazard scan.
+Forbidden:
+- ❌ Auto-fixing issues during review
+- ❌ Skipping the output format
+- ❌ Combining multiple review modes in one invocation (the exception is `/review`, which runs
+  the Section 7 and Section 8 protocols as subsections by design)
+- ❌ Producing vague, unsubstantiated findings
+- ❌ Reporting a gate as "clean" without having loaded the catalog
+- ❌ Filling a Vulnerability Scan with inapplicable entries to appear thorough
 
 ---
 
-# 11. RELATED SKILLS
+# 12. RELATED SKILLS
 
 | Need | Skill |
 |---|---|
-| Verify against a written spec | `verify` |
-| Hazard catalog and design references | `data-systems-design` |
-| Failure catalog for file, process, signal, and thread code | `systems-programming` |
-| Plan the fixes | `planner` |
-| Implement the fixes | `implement` |
-| Full pipeline | `engineer-workflow` |
+| Full pipeline (plan → detail → implement → verify) | `engineer-workflow` |
+| Plan a change before writing it | `planner` |
+| Expand one phase into implementable steps | `detail-planning` |
+| Write the code for a phase | `implement` |
+| Check an implementation against its spec | `verify` |
+| Data and distribution design decisions and hazards | `data-systems-design` |
+| File, process, signal, and thread rules and the failure catalog | `systems-programming` |
+| Security design decisions, threat models, and the vulnerability catalog | `security-engineering` |
 
-This skill is independent: it needs no `plan.md` or `executor.md` and reads the codebase and
-git state directly.
+This skill operates independently and does not require `plan.md` or the `engineer-workflow`
+pipeline. It reads the codebase and git state directly.
+
+Use it at any point in the lifecycle: `/review-uncommitted` during implementation,
+`/review-diff` before merge, `/review-inscope` to validate task completion, `/review` for
+periodic audits, `/review-data` before shipping anything that writes to more than one place,
+and `/review-security` before shipping anything that handles credentials, money, personal
+data, or untrusted input.

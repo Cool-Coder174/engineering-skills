@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Phase verification engine that compares implemented code against the executor.md specification and reports discrepancies, unhandled failure modes, missing observability, and hazard-catalog violations, with concrete fixes. Evidence-based and non-invasive. Use when the user says verify, validate, or check implementation.
+description: Phase verification engine that compares implemented code against the executor.md specification and reports discrepancies, unhandled failure modes, missing observability, and hazard- and vulnerability-catalog violations, with concrete fixes. Evidence-based and non-invasive. Use when the user says verify, validate, or check implementation.
 ---
 
 # VERIFY — SPECIFICATION CONFORMANCE ENGINE
@@ -53,8 +53,10 @@ unverified and say so.
 4. **Contract conformance** (Section 4) — the part that matters most.
 5. **Failure-mode coverage** (Section 5).
 6. **Hazard scan** against `data-systems-design/references/hazard-catalog.md` (Section 6).
-7. **Execute the verification plan** from the spec (Section 7).
-8. **Report** (Section 8), append to `executor.md` under the phase, and **STOP**.
+7. **Vulnerability scan** against `security-engineering/references/vulnerability-catalog.md`
+   (Section 7).
+8. **Execute the verification plan** from the spec (Section 8).
+9. **Report** (Section 9), append to `executor.md` under the phase, and **STOP**.
 
 ---
 
@@ -160,7 +162,38 @@ Report only applicable hazards, and mark the rest N/A rather than padding the ta
 
 ---
 
-# 7. EXECUTING THE VERIFICATION PLAN
+# 7. VULNERABILITY SCAN
+
+The hazard scan asks whether the code stays correct when things fail. This one asks whether it
+stays correct when someone is *trying* to break it. Run the applicable sections of
+`security-engineering/references/vulnerability-catalog.md`, using its "Quick scan order":
+
+```md
+### Vulnerability Scan
+| Vulnerability | Status | Evidence |
+|---|---|---|
+| V-44 Incomplete mediation | ✗ Violated | `orders.py:212` `GET /orders/{id}` loads by id with no tenant predicate; the list endpoint filters but this one does not |
+| V-09 Non-cryptographic PRNG | ✗ Violated | `tokens.py:14` uses `random.choices` for the reset token |
+| V-25 No replay protection | ✗ Violated | `webhooks.py:40` verifies the signature but accepts any timestamp |
+| V-14 Secret in source | ✓ Clear | Key read from `KMS_KEY_ID` env var (`crypto.py:9`); no literal keys in the diff |
+| V-01 ECB mode | N/A | No symmetric encryption in this phase |
+```
+
+Three rules for this table:
+
+- **Cite the line, not the concern.** "Authorization looks weak" is not a finding. A file, a
+  line, and the specific missing check is.
+- **A control that exists elsewhere does not clear the path in front of you.** The most common
+  false pass is seeing the check on the list endpoint and assuming the detail endpoint has it.
+- **Report only applicable entries** and mark the rest N/A rather than padding the table.
+
+If the phase spec included a Security Record, verify each mechanism it named actually exists at
+the point it claimed — a stated mechanism with no code behind it is the finding, and it is worse
+than an omission because it has already been signed off.
+
+---
+
+# 8. EXECUTING THE VERIFICATION PLAN
 
 Run each check from the spec's verification plan and report the actual result:
 
@@ -177,7 +210,7 @@ If a check cannot be executed, say so explicitly. Do not infer a pass.
 
 ---
 
-# 8. REPORT FORMAT
+# 9. REPORT FORMAT
 
 ```md
 ## Verification Report: Phase F<N> — [Title]
@@ -192,6 +225,7 @@ If a check cannot be executed, say so explicitly. Do not infer a pass.
 | Contracts | 12 | 8 | 3 | 1 | 0 |
 | Failure modes | 5 | 3 | 1 | 1 | 0 |
 | Hazards | 9 | 7 | 2 | 0 | 0 |
+| Vulnerabilities | 11 | 8 | 3 | 0 | 0 |
 | Verification plan | 4 | 2 | 1 | 0 | 1 |
 
 ### 🔴 Blocking Discrepancies
@@ -244,7 +278,7 @@ Append the report to `executor.md` under `## Phase F<N>` and do not create new f
 
 ---
 
-# 9. PACING AND DISCIPLINE
+# 10. PACING AND DISCIPLINE
 
 - One phase per invocation. Stop after the report.
 - **Do not apply fixes during verification.** Recommend them; wait to be asked.
@@ -255,7 +289,7 @@ Append the report to `executor.md` under `## Phase F<N>` and do not create new f
 
 ---
 
-# 10. RELATED SKILLS
+# 11. RELATED SKILLS
 
 | Need | Skill |
 |---|---|
@@ -264,4 +298,5 @@ Append the report to `executor.md` under `## Phase F<N>` and do not create new f
 | Fix the findings | `implement` |
 | Hazard catalog | `data-systems-design` |
 | Failure catalog for file, process, signal, and thread code | `systems-programming` |
+| Vulnerability catalog and threat models | `security-engineering` |
 | Full pipeline | `engineer-workflow` |

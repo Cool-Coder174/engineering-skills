@@ -51,14 +51,19 @@ authority.
 3. **Check the design gate.** If this phase touches persistence, concurrency, distribution,
    or external side effects, load `data-systems-design` and carry its Design Record
    decisions into this spec.
-4. **Decompose into ordered steps**, each mapped to real files.
-5. **Analyze failure modes per step** (Section 4) — this is the part that is normally
+4. **Check the security gate.** If this phase touches identity, authorization, secrets,
+   cryptography, untrusted input, or a new reachable surface, load `security-engineering` and
+   carry the plan's Security Record into this spec — **each named mechanism becomes a step at a
+   named enforcement point**, not a note. A mechanism with no step does not get built.
+5. **Decompose into ordered steps**, each mapped to real files.
+6. **Analyze failure modes per step** (Section 4) — this is the part that is normally
    skipped and is the reason implementations fail in production.
-6. **Define contracts** (Section 5): idempotency, retry, isolation, compatibility.
-7. **Define observability and verification** (Section 6).
-8. **Define rollback** (Section 7).
-9. **Append to `executor.md`** under `## Phase F<N>: [Name]`.
-10. **STOP.**
+7. **Define contracts** (Section 5): idempotency, retry, isolation, compatibility, and the
+   security contract.
+8. **Define observability and verification** (Section 6).
+9. **Define rollback** (Section 7).
+10. **Append to `executor.md`** under `## Phase F<N>: [Name]`.
+11. **STOP.**
 
 ---
 
@@ -92,10 +97,10 @@ authority.
 …
 
 ### Failure Mode Analysis
-[Section 4]
+[Section 4 — including the hazard scan, and the vulnerability scan if the security gate applies]
 
 ### Contracts
-[Section 5]
+[Section 5 — including the security contract (5.5) if the security gate applies]
 
 ### Observability
 [Section 6]
@@ -140,6 +145,20 @@ Then run the **hazard scan** for this phase against
 | H-29 Hot partition key | No | Partitioned by `tenant_id`, evenly distributed |
 ```
 
+Then, if the security gate applies to this phase, run the **vulnerability scan** against
+`security-engineering/references/vulnerability-catalog.md`, using its "Quick scan order". The
+mitigation column must name a step, so the spec is what gets built:
+
+```md
+### Vulnerability Scan (this phase)
+| Vulnerability | Applies | Mitigation in this spec |
+|---|---|---|
+| V-43/V-44 Missing or incomplete mediation | Yes | Step 2 adds the tenant predicate in the repository, not the handler; Step 6 negative test asserts cross-tenant 404 |
+| V-25 No replay protection | Yes | Step 4 rejects timestamps older than 5m and caches seen `event_id` for the window |
+| V-14 Secret in source | Yes | Step 1 reads the signing key from the secret store; no default value in config |
+| V-09 Weak randomness | No | No tokens or identifiers generated in this phase |
+```
+
 ---
 
 # 5. CONTRACTS (SPECIFY WHAT APPLIES; MARK THE REST N/A)
@@ -176,6 +195,25 @@ and resume mechanism for backfills.
 - Expected row/volume growth
 - Retention and deletion path, including derived stores
 
+### 5.5 Security contract
+- **Trust boundary crossed by this phase:** [what is on each side, and what is assumed about
+  the caller]
+- **Authentication:** how the caller's identity is established, and by which component
+- **Authorization:** the exact predicate, and the **enforcement point** — the layer through
+  which the operation cannot be reached without it (not the handler if the repository is
+  reachable directly)
+- **Untrusted inputs:** each one, its canonical form, and the parser or validator that produces
+  it before any decision is made on it
+- **Secrets and keys:** where each comes from, its lifetime, and what happens on rotation
+- **Freshness/replay:** the window, the identifier cache, and the behavior at the boundary
+- **Audit events emitted:** which security events, with which fields (see
+  `security-engineering/references/10-intrusion-detection-and-audit.md`)
+- **Failure posture:** what happens when the auth, policy, or key dependency is unavailable —
+  and the justification if it is anything other than deny
+
+Mark N/A per line rather than deleting the lines; an N/A that someone had to write is a
+decision, and a missing line is an omission nobody noticed.
+
 ---
 
 # 6. OBSERVABILITY AND VERIFICATION
@@ -203,6 +241,11 @@ Include structured log fields (especially the end-to-end request ID) and trace s
 
 Include the concurrency test explicitly for any hazard in section A of the catalog —
 single-threaded tests cannot detect lost updates or write skew.
+
+**Every security mechanism needs a negative test.** A test proving the authorized caller
+succeeds says nothing about the unauthorized one; the check may not exist. For each entry in the
+vulnerability scan, add a check that the wrong principal, the stale timestamp, the tampered
+payload, or the cross-tenant identifier is *refused*.
 
 ---
 
@@ -249,4 +292,5 @@ discovers it during an incident.
 | Review the resulting diff | `code-review` |
 | Data/distribution decisions and hazard catalog | `data-systems-design` |
 | File, process, signal, and thread decisions and the failure catalog | `systems-programming` |
+| Threat models, security decisions, and vulnerability catalog | `security-engineering` |
 | Full pipeline | `engineer-workflow` |

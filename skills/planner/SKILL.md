@@ -26,7 +26,7 @@ scaffolding, no immediate coding, no premature implementation suggestions.
 Permitted output: observations, root cause, design record, `plan.md`, execution strategy.
 Forbidden output: source files, scaffolding, feature implementation.
 
-**Exception — the proportionality rule (Section 12).** Trivial tasks get a micro-plan, not
+**Exception — the proportionality rule (Section 13).** Trivial tasks get a micro-plan, not
 a ceremony. Over-planning a one-line fix is itself a failure.
 
 ---
@@ -40,10 +40,11 @@ a ceremony. Over-planning a one-line fix is itself a failure.
 5. **Estimate** — back-of-the-envelope numbers, before any architecture (Section 6)
 6. **Architecture gate** — system design, if the work needs one (Section 7)
 7. **Data gate** — correctness under concurrency and failure, if applicable (Section 8)
-8. **Simplicity gate** — remove what the numbers do not justify (Section 9)
-9. **Plan** — phased, grounded, verifiable (Section 10)
-10. **Persist** — `plan.md` + `History/` (Section 11)
-11. **Stop** — await an explicit execution command
+8. **Security gate** — what an attacker gains, if applicable (Section 9)
+9. **Simplicity gate** — remove what the numbers do not justify (Section 10)
+10. **Plan** — phased, grounded, verifiable (Section 11)
+11. **Persist** — `plan.md` + `History/` (Section 12)
+12. **Stop** — await an explicit execution command
 
 Never skip 1–3 when a repository exists. A plan not grounded in the actual code is a guess
 with formatting.
@@ -259,7 +260,54 @@ If the gate is not triggered, write one line: `Data gate: not applicable — [re
 
 ---
 
-# 9. SIMPLICITY GATE (MANDATORY WHENEVER SECTION 7 TRIGGERED)
+# 9. SECURITY GATE (CONDITIONAL — WHAT AN ATTACKER GAINS)
+
+Sections 7 and 8 ask what to build and whether it stays correct. This gate asks a different
+question: **what does an adversary get, and what stops them?** Correctness under failure and
+correctness under attack are separate properties — a design can be flawless against random
+faults and trivially defeated by someone who is choosing their inputs on purpose.
+
+**Trigger this gate if the work touches any of:** authentication, authorization, session or
+token handling, a secret or key, cryptography of any kind, a new endpoint or externally
+reachable surface, untrusted input reaching an interpreter or a memory operation, PII/PHI/
+payment data, a new trust boundary or inter-service call, file upload or download, an outbound
+request to a caller-influenced destination, logging of sensitive fields, or a dependency on an
+external identity provider.
+
+When triggered:
+
+1. Load the **`security-engineering`** skill.
+2. Produce its **Security Record** at the depth its proportionality table prescribes
+   (`security-engineering/SKILL.md` §8) — the adversary, the assets, the trust boundaries, the
+   security services owed, and the mechanism chosen for each.
+3. Run the **Vulnerability Scan** from `security-engineering/references/vulnerability-catalog.md`
+   against the *proposed design*, using its quick-scan order.
+4. Attach both to `plan.md` under `## Security`.
+
+**Name the adversary before naming a mechanism.** A control chosen without a stated attacker is
+a guess, and the most common planning failure here is defending against the wrong one:
+
+```md
+### Threat Model
+| # | Adversary | Capability assumed | Asset | Service owed | Mechanism |
+|---|---|---|---|---|---|
+| T-1 | Unauthenticated internet caller | Can send arbitrary requests, replay captured ones | Booking records | Authentication, integrity | Signed session cookie; per-request nonce with 5-min window |
+| T-2 | Authenticated tenant A | Valid credentials, can guess identifiers | Tenant B's data | Access control | Tenant predicate in the query, enforced in the repository layer |
+| T-3 | Attacker holding a stolen database dump | Offline, unlimited compute | Password hashes | Confidentiality | Argon2id, per-user salt, cost reviewed annually |
+```
+
+> "We validate the input" and "it's behind the VPN" are **not** mechanisms. The first names no
+> boundary and no canonical form; the second is trust by network position (V-46).
+
+**Say what you are accepting.** Every gate output needs a residual-risk line: the attacks this
+design does not stop, and why that is acceptable at this stage. An unstated residual risk
+becomes an unowned one.
+
+If the gate is not triggered, write one line: `Security gate: not applicable — [reason].`
+
+---
+
+# 10. SIMPLICITY GATE (MANDATORY WHENEVER SECTION 7 TRIGGERED)
 
 Run this **after** the architecture, as a subtraction pass. Over-engineering is a design
 defect, not evidence of thoroughness, and the compounding cost is paid by whoever operates
@@ -299,9 +347,9 @@ Full test set and the design-review questions:
 
 ---
 
-# 10. PLAN GENERATION
+# 11. PLAN GENERATION
 
-## 10.1 Structure
+## 11.1 Structure
 
 ```md
 # Project Execution Plan: [Title]
@@ -327,7 +375,7 @@ Full test set and the design-review questions:
 - [How to revert this phase without data loss]
 ```
 
-## 10.2 Anti-generic directive
+## 11.2 Anti-generic directive
 
 Plans MUST reference real file paths, reuse existing patterns, and align with detected
 frameworks.
@@ -340,7 +388,7 @@ backend", "add error handling", "write tests", "optimize performance".
 > RPC method definitions in `server/rpc/routes.rs:88-140`; add the 5s timeout used by
 > `_callRpcWithRetry()` at line 61.
 
-## 10.3 Phase-ordering rules
+## 11.3 Phase-ordering rules
 
 1. **Reversible before irreversible.** Schema expansion before backfill before contraction.
 2. **Every phase must leave the system deployable.** No phase may depend on a later phase
@@ -350,7 +398,7 @@ backend", "add error handling", "write tests", "optimize performance".
 4. **Observability before the risky change**, so you can see the change's effect.
 5. **The rollback path is planned before the change**, not after it fails.
 
-## 10.4 Verification per phase
+## 11.4 Verification per phase
 
 Every phase needs a verification criterion that is **executable or observable**, not a
 feeling. A command to run, a test that fails before and passes after, a query whose result
@@ -362,22 +410,22 @@ to feature code.
 
 ---
 
-# 11. PERSISTENCE
+# 12. PERSISTENCE
 
-## 11.1 `plan.md`
+## 12.1 `plan.md`
 The single source of truth for the roadmap. Created for any non-trivial, multi-step, or
 architectural task. Acts as persistent memory, roadmap, progress tracker, verification
 ledger, and anti-drift anchor.
 
-## 11.2 `History/`
+## 12.2 `History/`
 Archive a copy at creation: `History/[slug]-[YYYY-MM-DD-HHmm].md`, containing the plan, the
-requirements, the estimates, the design record, and an execution log table.
+requirements, the estimates, the design record, the security record, and an execution log table.
 
-## 11.3 Live update loop
+## 12.3 Live update loop
 After every meaningful action: flip `[ ] → [x]`, add subtasks if scope evolves, log
 deviations and blockers, preserve chronological order.
 
-## 11.4 Replanning
+## 12.4 Replanning
 Allowed only when: the user changes scope, a technical blocker emerges, verification fails,
 or new architectural evidence appears. Update `plan.md` — never silently replace it.
 Preserve completed phases; append under `## Replan Log` with the date, trigger, and change.
@@ -387,15 +435,17 @@ if measured reality diverges from them, every conclusion downstream needs revisi
 
 ---
 
-# 12. PROPORTIONALITY (ANTI-OVER-ENGINEERING)
+# 13. PROPORTIONALITY (ANTI-OVER-ENGINEERING)
 
 | Task class | Output |
 |---|---|
 | Single-file edit, typo, copy change, local refactor | **Micro-plan:** 3–5 bullets inline. No `plan.md`. |
 | Feature within an existing pattern, no new persistence | `plan.md`, phases, verification. Requirements abbreviated; gates marked N/A. |
+| New endpoint, new input parsed, or a new outbound call | Add the **security gate** at vulnerability-scan depth |
 | New persistence, concurrency, migration, queue, or external integration | Full: requirements + estimation + data gate + simplicity gate + phases |
 | New service, new datastore, replication/partitioning change, or new source of truth | Full + **architecture gate** + fault model + rollout/rollback plan |
-| Money, auth, PII, or irreversible side effects | All of the above + integrity section + audit plan |
+| New authentication or authorization model, cryptography, or a new trust boundary | Full + **security gate** at Security Record depth, with the adversary named |
+| Money, auth, PII, or irreversible side effects | All of the above + integrity section + audit plan + residual-risk sign-off |
 
 **Quality proportional to lifetime:** the rigor of a plan should be proportional to how long
 the system will keep helping people. A two-week experiment and a decade-long payments
@@ -407,7 +457,7 @@ correct answer and the plan should say so explicitly.
 
 ---
 
-# 13. EXECUTION PACING
+# 14. EXECUTION PACING
 
 - The plan is produced; then **STOP**.
 - During implementation, **one phase per cycle**: complete → update `plan.md` → report → stop.
@@ -419,7 +469,7 @@ entry.
 
 ---
 
-# 14. FINAL OUTPUT FORMAT
+# 15. FINAL OUTPUT FORMAT
 
 ```md
 ## Observations
@@ -440,11 +490,14 @@ entry.
 ## Design
 [Section 8, if the gate triggered — Design Record + Invariants + Hazard Scan]
 
+## Security
+[Section 9, if the gate triggered — Security Record + Threat Model + Vulnerability Scan + residual risk]
+
 ## Simplicity Pass
-[Section 9, if Section 7 triggered — what was kept, removed, and deferred]
+[Section 10, if Section 7 triggered — what was kept, removed, and deferred]
 
 ## Plan
-[Section 10 phases]
+[Section 11 phases]
 
 ## Verbatim Execution Plan
 > Follow this plan verbatim. Trust the file references. Do not re-verify unless conflicts arise.
@@ -459,7 +512,7 @@ STOP — awaiting `implement F1` or `execute`.
 
 ---
 
-# 15. PLANNING RED FLAGS
+# 16. PLANNING RED FLAGS
 
 Self-check before emitting the plan:
 
@@ -467,7 +520,7 @@ Self-check before emitting the plan:
 |---|---|
 | Architecture appears before requirements or numbers | Return to Sections 5–6 |
 | "It should scale fine" / "this will be faster" | Estimate it or measure it |
-| A component with no number or requirement behind it | Remove it (Section 9) |
+| A component with no number or requirement behind it | Remove it (Section 10) |
 | Built for a scale nobody has measured a trend toward | Design for measured load; note the trigger for the next rung |
 | A decision with no rejected alternative | It is an assumption, not a decision |
 | Only the happy path is planned | Add the fault model and the failure behavior per dependency |
@@ -477,7 +530,7 @@ Self-check before emitting the plan:
 
 ---
 
-# 16. RELATED SKILLS
+# 17. RELATED SKILLS
 
 | Need | Skill |
 |---|---|
@@ -485,6 +538,7 @@ Self-check before emitting the plan:
 | System design method, estimation, building blocks, DB selection | `system-design` |
 | Data/distribution design decisions and hazards | `data-systems-design` |
 | File management, process, signal, and thread decisions | `systems-programming` |
+| Threat models, security decisions, and the vulnerability catalog | `security-engineering` |
 | Expand one phase into implementable steps | `detail-planning` |
 | Write the code for a phase | `implement` |
 | Check an implementation against its spec | `verify` |

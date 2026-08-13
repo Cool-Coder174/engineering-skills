@@ -5,11 +5,12 @@ the problem before designing, size it in numbers before choosing an architecture
 design decisions explicitly, implement with robustness invariants, verify against the spec,
 and review for the failure modes that only appear under concurrency, failure, and scale.
 
-Grounded in five books:
+Grounded in six books:
 
 | Book | What it contributes |
 |---|---|
 | **[*Designing Data-Intensive Applications*][ddia]** — Kleppmann | Correctness under concurrency, replication, and failure; the 48-hazard catalog |
+| **[*Cryptography and Network Security*][stallings]** — Stallings | Security services and mechanisms, threat framing, the 64-vulnerability catalog |
 | **[*System Design Interview: An Insider's Guide*][xu]** — Alex Xu | The design method, back-of-the-envelope estimation, the scaling ladder |
 | **[*Grokking the System Design Interview*][grok]** — Design Gurus | Building-block selection; the seven-step design process |
 | **[*Database Internals*][dbi]** — Alex Petrov | Database selection methodology, storage engine trade-offs, the RUM conjecture |
@@ -36,8 +37,22 @@ the simplicity pass exist to stop both.
 - missing timeouts that turn one slow dependency into a total outage
 - wall-clock timestamps used to order events across machines
 
-This suite turns those into a **named, detectable hazard catalog** that the planning,
-implementation, verification, and review skills all check against.
+**And they miss the failure modes that only appear when someone is attacking:**
+
+- tokens and salts generated from `Math.random()`, which is unpredictable to a statistician
+  and trivially predictable to an attacker
+- encryption used where integrity was needed, so the ciphertext is malleable
+- a signature that proves authorship and is silently assumed to prove freshness, leaving the
+  endpoint replayable
+- authentication mistaken for authorization — a logged-in user reading another tenant's row
+- an internal service that trusts an `X-User-Id` header any pod can set
+- a reset endpoint with no throttling, turning a six-digit code into a solved problem
+- an attack that succeeds and leaves no audit record, because the only log is one the
+  attacker can edit
+
+This suite turns both sets into **named, detectable catalogs** — 48 data hazards and 64
+security vulnerabilities — that the planning, implementation, verification, and review skills
+all check against.
 
 ---
 
@@ -50,7 +65,7 @@ skills/
 ├── detail-planning/SKILL.md        # One phase → implementable spec in executor.md
 ├── implement/SKILL.md              # Spec → code, with robustness invariants
 ├── verify/SKILL.md                 # Code vs. spec, with evidence
-├── code-review/SKILL.md            # 5 review modes incl. /review-data
+├── code-review/SKILL.md            # 6 review modes incl. /review-data and /review-security
 ├── system-design/                  # WHAT to build
 │   ├── SKILL.md                    # 7-step method, design doc, red flags, proportionality
 │   └── references/
@@ -77,29 +92,55 @@ skills/
 │       ├── 11-stream-processing.md
 │       ├── 12-correctness-and-integrity.md
 │       └── hazard-catalog.md       # 48 named hazards: signature → consequence → fix
-└── systems-programming/            # Whether the CODE survives the kernel
-    ├── SKILL.md                    # 5 syscall rules, 7 file recipes, review scan, glossary
+├── systems-programming/            # Whether the CODE survives the kernel
+│   ├── SKILL.md                    # 5 syscall rules, 7 file recipes, review scan, glossary
+│   └── references/
+│       ├── 01-file-descriptors-and-io.md    # fds, short counts, atomicity, fsync, mmap, locks
+│       ├── 02-files-and-directories.md      # stat, links, rename, durable update, path safety
+│       ├── 03-standard-io-and-buffering.md  # Buffer modes, flush vs fsync, fork duplication
+│       ├── 04-processes-and-execution.md    # fork/exec/wait, exit status, races, daemon rules
+│       ├── 05-signals.md                    # sigaction, async-signal-safety, EINTR, self-pipe
+│       ├── 06-threads-and-concurrency.md    # Mutexes, condvars, lock order, fork with threads
+│       ├── 07-ipc-and-sockets.md            # Pipes, framing, shared memory, fd passing
+│       ├── 08-toolchain-and-machine-model.md # Assemble/link/load, symbols, storage classes
+│       └── failure-catalog.md      # 55 named failures: signature → consequence → fix
+└── security-engineering/           # Whether it survives an ATTACKER
+    ├── SKILL.md                    # Threat model, security services, decision tables, security record
     └── references/
-        ├── 01-file-descriptors-and-io.md    # fds, short counts, atomicity, fsync, mmap, locks
-        ├── 02-files-and-directories.md      # stat, links, rename, durable update, path safety
-        ├── 03-standard-io-and-buffering.md  # Buffer modes, flush vs fsync, fork duplication
-        ├── 04-processes-and-execution.md    # fork/exec/wait, exit status, races, daemon rules
-        ├── 05-signals.md                    # sigaction, async-signal-safety, EINTR, self-pipe
-        ├── 06-threads-and-concurrency.md    # Mutexes, condvars, lock order, fork with threads
-        ├── 07-ipc-and-sockets.md            # Pipes, framing, shared memory, fd passing
-        ├── 08-toolchain-and-machine-model.md # Assemble/link/load, symbols, storage classes
-        └── failure-catalog.md      # 55 named failures: signature → consequence → fix
+        ├── 01-threat-model-and-security-services.md
+        ├── 02-cryptographic-primitives-and-modes.md
+        ├── 03-randomness-and-key-management.md
+        ├── 04-public-key-and-key-exchange.md
+        ├── 05-integrity-hashes-and-macs.md
+        ├── 06-signatures-and-authentication-protocols.md
+        ├── 07-identity-certificates-and-pki.md
+        ├── 08-transport-and-channel-security.md
+        ├── 09-authentication-and-access-control.md
+        ├── 10-intrusion-detection-and-audit.md
+        ├── 11-malicious-software-and-availability.md
+        ├── 12-perimeter-and-trusted-systems.md
+        └── vulnerability-catalog.md # 64 named vulnerabilities: signature → consequence → fix
 ```
 
 Each skill is a self-contained folder with a `SKILL.md`, which is the layout Claude Code,
 Cursor, and compatible agents expect.
 
-**The three engineering skills split the problem deliberately.** `system-design` decides
-*what to build* — scope, capacity, components, trade-offs. `data-systems-design` decides
-*whether it stays correct* across machines — isolation, replication, ordering, hazards.
+**The four gate skills split the problem deliberately.** `system-design` decides *what to
+build* — scope, capacity, components, trade-offs. `data-systems-design` decides *whether it
+stays correct* across machines — isolation, replication, ordering, hazards.
 `systems-programming` decides *whether the code survives one kernel* — short reads, atomicity,
-durability, signals, threads. A new service runs the first two; a file-ingest pipeline or a
-daemon runs the third; adding a retry to an existing call runs only the second.
+durability, signals, threads. `security-engineering` decides *whether it survives an
+adversary* — trust boundaries, identity, secrets, untrusted input.
+
+They are genuinely different questions, and the last is the one most often folded into the
+second by mistake. Correctness analysis assumes faults are random; security analysis assumes
+they are chosen. A queue consumer that is perfectly idempotent under duplicate delivery can
+still be a replay vulnerability, because idempotency answers "did this happen twice" and not
+"did the right party ask for it."
+
+A new public service runs all four. Adding a retry to an existing call runs only the second.
+A file-ingest pipeline or a daemon runs the third. Adding an authenticated endpoint runs only
+the fourth.
 
 ---
 
@@ -122,16 +163,17 @@ On Windows (PowerShell):
 Copy-Item -Recurse -Force skills\* $HOME\.cursor\skills\
 ```
 
-Skills are discovered automatically by name. `data-systems-design` and `systems-programming`
-must be installed for the other skills' hazard and failure scans to resolve their references.
+Skills are discovered automatically by name. `data-systems-design`, `systems-programming`, and
+`security-engineering` must be installed for the other skills' hazard, failure, and
+vulnerability scans to resolve their references.
 
 ---
 
 ## The pipeline
 
 ```
-PLANNING → ARCHITECTURE GATE → DESIGN GATE → SYSTEMS GATE → DETAIL PLANNING → IMPLEMENT → VERIFY → REVIEW
- plan.md   plan.md##Architecture  plan.md##Design  plan.md##Systems  executor.md    code     report   findings
+PLANNING → ARCHITECTURE → DESIGN → SYSTEMS → SECURITY → DETAIL PLANNING → IMPLEMENT → VERIFY → REVIEW
+ plan.md    ##Architecture  ##Design  ##Systems  ##Security   executor.md      code      report   findings
 ```
 
 | Command | What happens |
@@ -142,6 +184,7 @@ PLANNING → ARCHITECTURE GATE → DESIGN GATE → SYSTEMS GATE → DETAIL PLANN
 | `estimate` | Just the back-of-the-envelope numbers |
 | `data design` | Run the data-systems design gate and hazard scan |
 | `systems` / `low level` | Run the systems gate: syscall rules, file recipes, failure scan |
+| `security design` | Run the security gate: threat model and vulnerability scan of the design |
 | `detail F1` | Expand phase F1 into a spec with contracts, failure modes, rollback |
 | `implement F1` | Write the code, enforcing the robustness invariants |
 | `verify F1` | Compare code to spec, with file-and-line evidence |
@@ -150,6 +193,7 @@ PLANNING → ARCHITECTURE GATE → DESIGN GATE → SYSTEMS GATE → DETAIL PLANN
 | `/review` | Full repository audit |
 | `/review-inscope` | Check the change against the stated task |
 | `/review-data` | Deep data/concurrency/distribution hazard audit |
+| `/review-security` | Deep security audit: threat model, then the vulnerability catalog |
 
 Each phase stops when it's done and waits for you. One phase per cycle, by design.
 
@@ -168,6 +212,13 @@ Each phase stops when it's done and waits for you. One phase per cycle, by desig
       INV-1  balance never negative  → CHECK constraint + atomic UPDATE
       INV-2  one charge per request  → unique index on idempotency_key
       H-14 non-idempotent retry, H-06 side effect in transaction → mitigated in F2
+  → Security gate triggers (money + a Stripe webhook + a new endpoint):
+      T-1  unauthenticated caller replaying a captured webhook
+           → signature verified, 5-minute window, seen event_id cached (V-25, V-26)
+      T-2  authenticated tenant reading another tenant's wallet
+           → tenant predicate in the repository, negative test in F2 (V-44)
+      Residual risk accepted: no per-request proof-of-possession on the session
+      cookie; mitigated by a 30-minute lifetime and server-side revocation (V-28)
   → STOP
 
 > detail F2
@@ -250,6 +301,55 @@ whichever stage it appears.
 
 ---
 
+## What the security gate produces
+
+For anything touching identity, authorization, secrets, cryptography, untrusted input, a new
+reachable surface, or regulated data:
+
+- **A named adversary with a stated capability** — because a control chosen without an attacker
+  in mind is a guess, and the usual failure is defending against the wrong one
+- **The assets and trust boundaries**, so "internal" stops being a security argument
+- **The security services owed** — authentication, access control, confidentiality, integrity,
+  nonrepudiation, availability — chosen per asset rather than assumed from the fact that
+  something is encrypted
+- **A mechanism per service**, at a named enforcement point in the code
+- **A vulnerability scan** against the catalog, run against the design and again against the
+  implementation
+- **Detection** — which security events are emitted, with which fields, and where the audit
+  trail lives
+- **Residual risk, stated and owned** — the attacks this design does not stop, and why that is
+  acceptable
+
+It enforces the same language discipline as the design gate: "we validate the input", "it's
+behind the VPN", "we sanitize it", "we encrypt it", and "internal tool, low risk" are rejected
+unless accompanied by the boundary, the canonical form, and the mechanism.
+
+---
+
+## The vulnerability catalog
+
+64 named vulnerabilities, each with a **detection signature**, a **consequence** traced to the
+principle it violates, and a **required fix** — grouped as:
+
+| Group | Examples |
+|---|---|
+| A. Cipher selection and modes | V-01 ECB · V-02 reused IV · V-05 keystream reuse · V-08 home-grown construction |
+| B. Randomness, keys, and secrets | V-09 non-cryptographic PRNG · V-12 long-lived key used directly · V-14 secret in source |
+| C. Integrity and message authentication | V-15 encryption as integrity · V-18 naive keyed hash · V-21 non-constant-time compare |
+| D. Authentication protocols and freshness | V-25 no replay protection · V-28 reusable bearer credential · V-30 session not renewed |
+| E. Identity, certificates, and trust | V-32 verification disabled · V-33 key from an unauthenticated channel · V-35 unauthenticated DH |
+| F. Channel and transport security | V-37 unprotected sensitive traffic · V-38 downgrade permitted · V-42 handshake not bound |
+| G. Access control and privilege | V-43 no authorization check · V-44 incomplete mediation · V-46 trust by network position |
+| H. Passwords and credential storage | V-48 recoverable password · V-50 fast hash · V-53 unthrottled guessing · V-54 default credentials |
+| I. Audit, detection, and logging | V-55 event not audited · V-56 modifiable audit trail · V-58 secrets in logs |
+| J. Untrusted input, malicious code, availability | V-59 input reaching an interpreter · V-60 development backdoor · V-62 unbounded work |
+
+Same sharing rule as the hazard catalog: the planner scans the design, `detail-planning` turns
+each mitigation into a step with a negative test, `implement` enforces it, and `verify` and
+`code-review` check that the mechanism exists where the record claimed it would.
+
+---
+
 ## Design principles
 
 **Proportionality.** Every skill has an explicit anti-over-engineering rule. A copy change
@@ -297,6 +397,9 @@ Nothing requires the full pipeline:
   without losing it on a crash?", "why does my progress output vanish in a pipeline?", "is
   this signal handler safe?", "why is this `undefined reference` when the library is right
   there?"). Its file-management recipes stand alone for ingest and indexing pipelines.
+- `security-engineering` answers security questions on its own ("is this token design sound?",
+  "how should we store these credentials?", "what can an attacker do with this endpoint?"), and
+  works as a threat-modelling lens on a design someone else wrote.
 - `planner` is useful alone for turning a vague request into a grounded plan.
 
 ---
@@ -317,6 +420,7 @@ Skills previously lived as flat files at the repository root. They are now folde
 | — | `skills/data-systems-design/` (new) |
 | — | `skills/system-design/` (new) |
 | — | `skills/systems-programming/` (new) |
+| — | `skills/security-engineering/` (new) |
 
 If you installed the old flat files, remove them before installing the new folders so the
 agent does not load two versions of the same skill.
@@ -329,8 +433,10 @@ None. These are Markdown skill definitions for AI agents.
 
 ## Contributing
 
-Fork, branch, PR. New hazards are welcome — follow the catalog's format
-(signature → consequence → fix) and cite the source of the failure mode.
+Fork, branch, PR. New hazards and vulnerabilities are welcome — follow the catalog's format
+(signature → consequence → fix) and cite the source of the failure mode. In the vulnerability
+catalog, mark guidance that post-dates the 4th edition with the **Modern** tag rather than
+attributing it to Stallings.
 
 ## License
 
@@ -342,6 +448,11 @@ Concepts, terminology, methodology, and reference numbers come from:
 
 - [*Designing Data-Intensive Applications*][ddia] — Martin Kleppmann (O'Reilly, 2017).
   Page references throughout `data-systems-design` refer to that edition.
+- [*Cryptography and Network Security: Principles and Practices*][stallings] — William
+  Stallings (Prentice Hall, 4th ed., 2005). Security services and mechanisms, the attack
+  taxonomy, and the reference-monitor and audit-record models. Page and section references
+  throughout `security-engineering` refer to that edition; guidance that post-dates it is
+  marked **Modern** rather than attributed to the book.
 - [*System Design Interview: An Insider's Guide*][xu] — Alex Xu (2020). The design
   framework, back-of-the-envelope estimation, and the scaling progression.
 - [*Grokking the System Design Interview*][grok] — Design Gurus. The seven-step process and
@@ -360,6 +471,7 @@ This repository contains original prose applying those concepts to agent workflo
 not a reproduction of any of the books, and reading them is still strongly recommended.
 
 [ddia]: https://dataintensive.net/
+[stallings]: https://williamstallings.com/Cryptography/
 [xu]: https://www.systemdesigninsider.com/
 [grok]: https://www.designgurus.io/course/grokking-the-system-design-interview
 [dbi]: https://www.databass.dev/

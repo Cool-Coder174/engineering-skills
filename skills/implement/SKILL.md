@@ -65,7 +65,8 @@ first. Do not improvise a design during implementation.
 # 3. ROBUSTNESS INVARIANTS (NON-NEGOTIABLE)
 
 These apply whenever the code being written matches the trigger. They are derived from the
-hazard catalog in `data-systems-design/references/hazard-catalog.md`; the hazard IDs are
+hazard catalog in `data-systems-design/references/hazard-catalog.md` and the vulnerability
+catalog in `security-engineering/references/vulnerability-catalog.md`; the H- and V- IDs are
 given so a reviewer can trace them.
 
 ### 3.1 Every outbound call
@@ -143,12 +144,66 @@ inside a transaction at the usual isolation levels.
 ### 3.11 Every error path
 - No silently swallowed exceptions (`catch {}`, `except: pass`).
 - Errors carry context (operation, identifiers, the request ID) — and never secrets or PII.
+  *(V-58)*
 - Failure is either handled or propagated. It is never ignored.
+- A failed security check fails **closed**. Never `return true` in a `catch`. *(V-64)*
 
 ### 3.12 Observability
 - Emit the counters, gauges, and structured log fields the spec's observability section
   named — including the end-to-end request ID. *(H-47)*
 - Log at boundaries, not in loops.
+- Emit the security events the spec named: authentication outcomes, authorization denials,
+  successful privileged actions, privilege changes, and credential lifecycle events. *(V-55)*
+
+### 3.13 Every endpoint, consumer, job, or admin action
+- **An authorization check exists**, and it is at the enforcement point the spec named — the
+  layer the operation cannot be reached without. Not the UI, not the gateway, not only the list
+  query. *(V-43, V-44)*
+- The check re-runs on **every** access, not once per session or batch. *(V-44)*
+- The decision uses trusted inputs only: never a tenant id, role, or user id read from a
+  request body, an unverified header, or a client-writable cookie. *(V-46)*
+- The identity, tenant, or scope predicate lives where the data is fetched, so a direct call
+  cannot bypass it.
+
+### 3.14 Every untrusted input
+- Reaches an interpreter only through a construction that cannot be injected: parameterised
+  queries, prepared statements, an argument vector rather than a shell string, a template with
+  autoescaping, a deserialiser restricted to expected types. *(V-59)*
+- Is validated against an **allowlist**, in canonical form, before any decision depends on it.
+- Has a bound: length, size, depth, count, decompressed size, page size. *(V-62)*
+- For any server-side fetch to a caller-influenced destination, the destination is allowlisted —
+  not blocklisted.
+
+### 3.15 Every secret, key, token, and random value
+- No secret in source, config committed to the repo, error message, or log. Read from the
+  environment or the secret store. *(V-14)*
+- Security-relevant random values come from a **cryptographically secure** generator
+  (`secrets`, `crypto.randomBytes`, `SecureRandom`) — never `Math.random`, `rand()`, or a
+  seeded PRNG. *(V-09, V-10)*
+- Passwords are stored with a password-specific KDF (Argon2id, scrypt, bcrypt) and a
+  per-credential salt. Never a fast hash, never reversible. *(V-48, V-49, V-50)*
+- MACs, tokens, and password hashes are compared in **constant time**. *(V-21)*
+- Use a vetted AEAD (AES-GCM, ChaCha20-Poly1305) from the platform library; never compose a
+  construction, never ECB, never a reused IV or nonce. *(V-01, V-02, V-04, V-08)*
+- Integrity comes from HMAC or a signature — never from encryption alone, and never from
+  `hash(secret + message)`. *(V-15, V-18)*
+- TLS and certificate verification stay **on**, including for internal calls and test helpers
+  that could reach production. *(V-32)*
+
+### 3.16 Every authenticated message, webhook, or token
+- Verify the signature **and** the freshness: an expiry or maximum age, plus a cache of seen
+  identifiers for the window. *(V-25, V-26)*
+- Verify issuer, audience, and scope — not just that the signature is valid. *(V-29)*
+- Pin the expected algorithm and key by policy; never take either from the message being
+  verified. *(V-33, V-38)*
+- Rotate the session identifier at login and at every privilege change. *(V-30)*
+- Everything that influences interpretation goes **inside** the authenticated region. *(V-20)*
+
+### 3.17 Never
+- A magic token, header, parameter, or user id that bypasses a check; a debug or impersonation
+  endpoint reachable in production; a seeded default credential. *(V-54, V-60)*
+- If a local-development bypass is genuinely required, it must be impossible to enable in
+  production by configuration, and a test must assert it is off.
 
 ---
 
@@ -165,6 +220,10 @@ Implement the verification plan from `executor.md`, and at minimum:
 - **Migration test**: run the migration against seeded data; assert both old and new code
   work against the intermediate state.
 - **Boundary tests**: empty, one, many, maximum page size, unicode, timezone edges.
+- **Negative security tests** for every security mechanism the spec named: the unauthorized
+  principal is refused, the cross-tenant identifier returns not-found, the tampered payload is
+  rejected, the expired or replayed message is rejected. A test that only proves the authorized
+  caller succeeds does not prove the check exists.
 
 Tests must actually assert. A test with no assertion, marked `.skip`/`.only`, or asserting
 a mock's own return value is worse than no test.
@@ -246,4 +305,5 @@ STOP — awaiting `verify F<N>` or the next instruction.
 | Review the resulting diff | `code-review` |
 | Design decisions and hazard catalog | `data-systems-design` |
 | File, process, signal, and thread rules and the failure catalog | `systems-programming` |
+| Security decisions and vulnerability catalog | `security-engineering` |
 | Full pipeline | `engineer-workflow` |
