@@ -1,356 +1,411 @@
 ---
 name: system-design
-description: Industry-standard system design methodology — requirements clarification, API contract definition, back-of-the-envelope capacity estimation, data model, high-level architecture, deep dive, and bottleneck analysis. Grounded in Alex Xu's System Design Interview, Grokking the System Design Interview, Database Internals (Petrov), and Code Simplicity (Kanat-Alexander). Use when designing a new system or service, sizing capacity, choosing a database or architecture, or reviewing an existing design.
+description: A method to design a system in seven steps. The steps clarify the requirements, define the interface, estimate the load, and define the data model. Then they make a high-level design, examine two or three components in detail, and find the bottlenecks. Use this skill when you design a new system or a new service. Use it when you estimate capacity. Use it when you select a database, a cache, a queue, or an architecture. Use it when you review a design that exists. The content comes from four books. They are System Design Interview (Alex Xu), Grokking the System Design Interview, Database Internals (Petrov), and Code Simplicity (Kanat-Alexander).
 ---
 
 # SYSTEM DESIGN
 
-**ROLE:** Staff engineer running a system design.
-**CORE FUNCTION:** Take an open-ended, ambiguous request and produce a defensible
-architecture — with the scope clarified, the scale estimated in numbers, the components
-justified, the bottlenecks named, and the trade-offs stated out loud.
+**ROLE:** You are a staff engineer. You make a system design.
 
-This skill is the **design methodology**. It pairs with `data-systems-design`, which is the
-**correctness knowledge base** (hazards, isolation, replication, consistency). Use this one
-to decide *what to build*; use that one to make sure it *stays correct under concurrency
-and failure*.
+**CORE FUNCTION:** You receive a request that is unclear and open-ended. You produce an
+architecture that you can defend.
+
+A design that you can defend has six parts:
+
+1. The scope is written down.
+2. The load has numbers.
+3. Each component has a stated reason.
+4. The bottlenecks have names.
+5. The trade-offs are written down.
+6. The failure behavior is written down.
+
+## How this skill relates to `data-systems-design`
+
+The two skills answer different questions. Use both when the work needs both.
+
+| Skill | Question it answers |
+|---|---|
+| `system-design` (this skill) | What must we build? |
+| `data-systems-design` | Does the design stay correct? |
+
+Use this skill first. It decides the shape of the system. Then use `data-systems-design`.
+It checks that the shape stays correct during concurrent operation and during failures.
 
 ---
 
-# 1. ACTIVATION
+# 1. WHEN TO USE THIS SKILL
 
-Use this skill when the task is:
+Use this skill for these tasks:
 
-- designing a new system, service, or major feature
-- sizing capacity, estimating load, or answering "will this scale?"
-- choosing a database, cache, queue, or communication protocol
-- reviewing or critiquing an existing architecture
-- planning a migration or a re-architecture
-- answering "how would we support 10x?"
+- You design a new system, a new service, or a large feature.
+- You estimate capacity or load.
+- You answer this question: does the design scale?
+- You select a database, a cache, a queue, or a communication protocol.
+- You review an architecture.
+- You plan a migration or a new architecture.
+- You answer this question: what must change to support 10 times the load?
 
-**Do not use it** for a bug fix, a copy change, a refactor inside one module, or a feature
-that fits an existing pattern with no new infrastructure. See Section 7.
+Do not use this skill for these tasks:
+
+- A bug fix.
+- A text change.
+- A refactor inside one module.
+- A feature that fits a pattern that exists, and that adds no infrastructure.
+
+Section 7 gives the full rule for how much output each task needs.
 
 ---
 
 # 2. THE SEVEN-STEP METHOD
 
-The method below merges Alex Xu's four-step framework with Grokking's seven steps.
-The order matters: each step constrains the next, and skipping ahead is the single most
-common cause of designing the wrong system.
+This method comes from two books. Alex Xu gives four steps. Grokking gives seven steps.
+The table below merges them.
 
-> **The discipline this enforces:** do not propose a solution before the requirements are
-> written down. Answering fast, without clarifying, is a red flag — not a strength. The
-> other red flag is **over-engineering**: delighting in design purity while ignoring
-> trade-offs and the compounding cost of the system you just committed someone to
-> operating.
+Do the steps in order. Each step limits the next step. **Most bad designs come from a step
+that the engineer skipped.**
 
-| # | Step | Output | Effort share |
+| Step | Action | Output | Share of effort |
 |---|---|---|---|
-| 1 | Clarify requirements and scope | Functional + non-functional requirements, explicit non-goals | 10–20% |
-| 2 | Define the interface | API contract / event schema | 5–10% |
-| 3 | Estimate scale | QPS, storage, bandwidth, memory, server count | 10–15% |
-| 4 | Define the data model | Entities, relationships, access patterns, store choice | 10–15% |
-| 5 | High-level design | 5–8 box diagram, request flows, get agreement | 15–20% |
-| 6 | Deep dive | 2–3 critical components in detail | 25–35% |
-| 7 | Bottlenecks, failure, operations | SPOFs, failure modes, monitoring, rollout, next scale curve | 10–15% |
+| 1 | Clarify the requirements and the scope | Functional requirements. Non-functional requirements. Non-goals. | 10–20% |
+| 2 | Define the interface | API contract or event schema | 5–10% |
+| 3 | Estimate the load | QPS, storage, bandwidth, memory, server count | 10–15% |
+| 4 | Define the data model | Entities, access patterns, database choice | 10–15% |
+| 5 | Make a high-level design | A diagram of 5 to 8 components. The request flows. | 15–20% |
+| 6 | Examine 2 or 3 components in detail | A detailed design for each one | 25–35% |
+| 7 | Find the bottlenecks and the failure modes | Bottleneck table. Failure table. Operations plan. | 10–15% |
 
-## Step 1 — Clarify requirements and establish scope
+**Two rules control this method:**
 
-**Never skip this, and never assume your assumption is correct.** If you cannot ask a
-human, write your assumptions down explicitly and mark them as assumptions so they can be
-challenged later.
+**Rule 1. Do not propose a solution before you write down the requirements.** A fast answer
+without clarification is a fault, not a strength.
 
-The question bank:
+**Rule 2. Do not add a component that no number requires.** Engineers who like design purity
+often ignore trade-offs. They do not see the cost of an architecture that is too large.
+Someone else pays that cost every day.
 
-- **Features:** what exactly are we building? What is explicitly *not* in scope?
-- **Users:** how many total? How many daily active? What is the growth expectation at
-  3 months, 6 months, a year?
-- **Traffic shape:** read-heavy or write-heavy, and by what ratio? Peak vs. average? Is
-  traffic bursty, diurnal, or event-driven?
-- **Data:** what is stored, how big is each item, how long is it retained?
-- **Latency:** what is the p99 target, and for which operations specifically?
-- **Consistency:** can a user tolerate seeing stale data? For how long? Which operations
-  must be immediately visible to the person who performed them?
-- **Availability:** what is the target, and what does "down" mean here?
-- **Existing stack:** what do we already run that we can use? *This constraint usually
-  matters more than any theoretical best choice.*
-- **Client types:** web, mobile, third-party API? Offline support? Push required?
-- **Compliance:** PII, residency, retention, audit, deletion obligations?
+## Step 1 — Clarify the requirements and the scope
 
-Output:
+**Never skip this step. Never assume that your assumption is correct.**
+
+If you cannot ask a person, write your assumptions down. Mark each one as an assumption.
+Then a reviewer can challenge it.
+
+Ask these questions:
+
+- **Features.** What do we build? What do we not build?
+- **Users.** How many users in total? How many users each day? What growth do we expect
+  after 3 months, 6 months, and 12 months?
+- **Traffic.** Are there more reads than writes? What is the ratio? What is the peak? Is the
+  traffic steady, or does it change through the day?
+- **Data.** What do we store? How large is each item? How long do we keep it?
+- **Latency.** What is the p99 target? Which operations does that target cover?
+- **Consistency.** Can a user see old data? For how long? Which operations must show a
+  change to the person who made that change?
+- **Availability.** What is the target? What does the word "down" mean for this system?
+- **Existing systems.** What do we run today? What can we reuse? *This limit is often more
+  important than any theoretical best choice.*
+- **Clients.** Web, mobile, or a third-party API? Do we support offline use? Do we send push
+  messages?
+- **Compliance.** Does the system hold personal data? Are there rules for data location,
+  retention, audit, or deletion?
+
+Record the answers in this format:
 
 ```md
 ### Requirements
 **Functional**
-- FR-1 [capability, observable behavior]
+- FR-1 [a capability, described as behavior that a user can see]
 
 **Non-functional**
-- Scale: [DAU, QPS, growth]
+- Load: [daily active users, QPS, growth]
 - Latency: p50 [x] ms, p99 [y] ms, for [operations]
-- Availability: [target] — "down" means [definition]
-- Consistency: [level] for [operations], because [user-visible reason]
+- Availability: [target]. "Down" means [definition].
+- Consistency: [level] for [operations], because [reason that a user can see]
 - Durability: RPO [ ], RTO [ ]
 
-**Explicitly out of scope**
-- [Thing we are not building — say so now, not in review]
+**Not in scope**
+- [What we do not build. Record it now, not during the review.]
 
-**Assumptions** (unverified — challenge these)
-- [Assumption, and what breaks if it's wrong]
+**Assumptions** (nobody has confirmed these. Challenge them.)
+- [The assumption. What breaks if it is wrong.]
 ```
 
 ## Step 2 — Define the interface
 
-Write the API before the architecture. It forces the requirements to be concrete and
-surfaces misunderstandings immediately — if you cannot write the endpoint signature, you
-do not yet understand the requirement.
+Write the API before you design the architecture. Two reasons make this order correct:
+
+1. The API makes each requirement concrete.
+2. The API shows a misunderstanding at once. If you cannot write the endpoint signature, you
+   do not yet understand the requirement.
 
 ```md
 ### API
-POST /v1/posts            { content, media_ids[], idempotency_key } → { post_id }
-GET  /v1/feed?cursor=&limit=   → { items[], next_cursor }
+POST /v1/posts                 { content, media_ids[], idempotency_key } -> { post_id }
+GET  /v1/feed?cursor=&limit=   -> { items[], next_cursor }
 ```
 
-For each endpoint state: auth, idempotency, pagination style, rate limit, and error cases.
-For event-driven paths, define the event schema, the partition key, and the delivery
-semantics instead.
+For each endpoint, record these items: authentication, idempotency, pagination style, rate
+limit, and error cases.
 
-## Step 3 — Estimate scale (back-of-the-envelope)
+For an event, record these items instead: the event schema, the partition key, and the
+delivery guarantee.
 
-**This step is what separates a design from a diagram.** Numbers determine whether you
-need one server or a hundred, one database or a sharded cluster — and they are the only
-honest way to reject an over-engineered proposal.
+## Step 3 — Estimate the load
 
-Compute, at minimum: **QPS (average and peak), storage per day and at retention horizon,
-bandwidth, cache size, and server count.**
+**This step changes a diagram into a design.**
 
-Rules: round aggressively (precision is not the point), **label every unit**, and write
-the assumptions next to the arithmetic so a reviewer can attack the assumption rather than
-the result.
+Numbers decide how many servers you need. Numbers decide whether you need one database or
+many. Numbers are also the only honest way to reject a design that is too large.
 
-Full formulas, latency numbers, availability tables, and worked examples:
-`references/02-estimation.md`
+Calculate at least these values: average QPS, peak QPS, storage each day, storage at the
+retention limit, bandwidth, cache size, and server count.
+
+Three rules control this step:
+
+1. **Round the numbers.** Precision is not the goal.
+2. **Write the unit after every number.**
+3. **Write each assumption next to its arithmetic.** Then a reviewer can attack the
+   assumption instead of the result.
+
+For formulas, latency numbers, availability tables, and worked examples, read
+`references/02-estimation.md`.
 
 ## Step 4 — Define the data model
 
-Entities, relationships, cardinalities, and the top ~10 access patterns by frequency and
-latency sensitivity. **The access patterns choose the store, not the entity diagram.**
+Record the entities, the relationships, and the counts. Then record the 10 most frequent
+access patterns. Mark which ones need low latency.
 
-Then choose the store and say why, including the rejected alternative.
-Selection methodology: `references/05-database-selection.md`
+**The access patterns select the database. The entity diagram does not.**
 
-## Step 5 — High-level design
+Select the database. Record why you selected it. Record which alternative you rejected.
 
-Draw 5–8 boxes and the request flows between them. Resist adding a component you cannot
-justify from the numbers in Step 3.
+For the selection method, read `references/05-database-selection.md`.
 
-Typical boxes: clients → DNS/CDN → load balancer → stateless app tier → cache → primary
-datastore → message queue → async workers → derived stores (search, analytics) → object
-storage.
+## Step 5 — Make a high-level design
 
-Then **walk the concrete flows end to end** — the write path and the read path, at
-minimum. Walking a real use case is how you find the edge cases the box diagram hides.
+Draw 5 to 8 components. Draw the request flows between them.
 
-The standard progression from one server to millions of users, and what triggers each
-step: `references/03-scaling-ladder.md`
+Add no component that the Step 3 numbers do not require.
 
-Component selection — load balancers, caches, CDN, queues, consistent hashing, rate
-limiting, ID generation, client-server protocols: `references/04-building-blocks.md`
+A typical set of components is: clients, DNS, CDN, load balancer, stateless application
+servers, cache, primary database, message queue, asynchronous workers, derived stores such
+as a search index, and object storage.
 
-## Step 6 — Deep dive
+Then **examine the flows from start to end**. Examine the write path. Examine the read path.
+This examination finds the edge cases that a component diagram hides.
 
-Pick the **two or three components where the difficulty actually lives** and design them
-properly. Do not spread attention evenly; that produces a shallow design everywhere.
+For the standard order in which to add infrastructure, read `references/03-scaling-ladder.md`.
+That reference also gives the signal that triggers each addition.
 
-Choose the deep-dive targets by asking: which component has the highest QPS, the hardest
-consistency requirement, the worst hot-key problem, or the least reversible decision?
+For how to select each component, read `references/04-building-blocks.md`.
 
-For each, cover: the algorithm or data structure, the partition/replication strategy, the
-concurrency control, the failure behavior, and the specific trade-off you accepted.
+## Step 6 — Examine 2 or 3 components in detail
 
-**Every deep dive must run the hazard scan** from
-`data-systems-design/references/hazard-catalog.md`. This is where design errors become
-correctness bugs.
+Select the **two or three components that hold the difficulty**. Design those components
+fully.
 
-## Step 7 — Bottlenecks, failure, and operations
+Do not give equal attention to every component. Equal attention produces a design that is
+shallow everywhere.
 
-The step most designs omit, and the one reviewers care about most.
+Select each component with these questions:
+
+- Which component has the highest QPS?
+- Which component has the strictest consistency requirement?
+- Which component has the worst hot-key problem?
+- Which decision is the hardest to reverse?
+
+For each selected component, record these items: the algorithm or data structure, the
+partition plan, the replication plan, the concurrency control, the failure behavior, and the
+trade-off that you accepted.
+
+**Run the hazard scan on every detailed component.** The hazard list is in
+`data-systems-design/references/hazard-catalog.md`. At this level of detail, a design error
+becomes a correctness defect.
+
+## Step 7 — Find the bottlenecks, the failure modes, and the operations plan
+
+Most designs omit this step. Reviewers care about it most.
 
 ```md
-### Bottleneck & Failure Analysis
-| Component | SPOF? | Saturates at | Symptom | Mitigation |
+### Bottlenecks
+| Component | Single point of failure? | Saturates at | Symptom | Mitigation |
 |---|---|---|---|---|
-| Primary DB writes | Yes | ~8k writes/s | Write latency climbs, replication lag grows | Shard by user_id; queue non-critical writes |
-| Feed fan-out worker | No | ~50k fan-outs/s | Feed staleness grows | Hybrid push/pull for high-follower accounts |
+| Primary database writes | Yes | ~8k writes/s | Write latency rises. Replication lag grows. | Partition by user_id. Move low-priority writes to a queue. |
+| Feed fan-out worker | No | ~50k fan-outs/s | Feeds become old | Use push for normal accounts and pull for large accounts |
 
 ### Failure Modes
 | Failure | Behavior | Degraded mode | Recovery |
 |---|---|---|---|
-| Cache cluster down | Origin load ×20 | Serve from DB with request coalescing | Warm cache progressively |
-| Region loss | Writes unavailable in region | Read-only from replica region | Promote, then reconcile |
+| Cache cluster stops | Load on the database rises 20 times | Read from the database. Merge identical requests. | Fill the cache in stages |
+| Region stops | The region cannot accept writes | Serve read-only traffic from a replica region | Promote a replica. Then repair the data. |
 
 ### Operations
-- Monitoring: [the signals that would catch each failure above, with thresholds]
-- Rollout: [flag / canary / percentage ramp]
-- Rollback: [how, and the point of no return]
+- Monitoring: [the signal that detects each failure above, with a threshold]
+- Rollout: [flag, canary, or a staged percentage]
+- Rollback: [the method, and the point after which rollback is not possible]
 
-### The Next Scale Curve
-At 10x: [which parameter saturates first, and the next architecture]
+### The next scale step
+At 10 times the load: [which value saturates first, and the next architecture]
 ```
 
-**Never claim a design is finished or optimal.** State what you would improve with more
-time — that list is part of the deliverable.
+**Never state that a design is finished or optimal.** Record what you would improve with
+more time. That list is part of the output.
 
 ---
 
 # 3. THE DESIGN DOCUMENT
 
-The output artifact. Sized to the decision (see Section 7).
+This is the output artifact. Match its size to the decision. Section 7 gives the rule.
 
 ```md
 # Design: [System]
 
-## 1. Problem & Scope
-[What we're building, why now, explicit non-goals]
+## 1. Problem and scope
+[What we build. Why now. What we do not build.]
 
 ## 2. Requirements
-[Functional, non-functional with numbers, assumptions]
+[Functional. Non-functional, with numbers. Assumptions.]
 
-## 3. API / Interface
-[Endpoints or event schemas with idempotency, pagination, errors]
+## 3. API
+[Endpoints or event schemas, with idempotency, pagination, and errors]
 
-## 4. Capacity Estimates
-| Metric | Value | Derivation |
+## 4. Capacity estimates
+| Metric | Value | How we calculated it |
 |---|---|---|
-| DAU | 10M | given |
-| Write QPS (avg / peak) | 3.5k / 7k | 10M × 2 posts / 86,400; peak = 2× |
-| Storage / day | 30 TB | 10M × 2 × 10% media × 1 MB |
-| Storage @ 5 yr | ~55 PB | 30 TB × 365 × 5 |
-| Cache (20% hot) | 240 GB | working set × item size |
-| App servers | ~14 | peak QPS / 500 per server |
+| Daily active users | 10M | given |
+| Write QPS (average / peak) | 3.5k / 7k | 10M x 2 posts / 86,400. Peak = 2 x average. |
+| Storage each day | 30 TB | 10M x 2 x 10% media x 1 MB |
+| Storage after 5 years | ~55 PB | 30 TB x 365 x 5 |
+| Cache (20% hot) | 240 GB | hot item count x item size |
+| Application servers | ~14 | peak QPS / 500 per server |
 
-## 5. Data Model
-[Entities, relationships, access patterns, store choice + rejected alternative]
+## 5. Data model
+[Entities. Relationships. Access patterns. Database choice. Rejected alternative.]
 
-## 6. High-Level Architecture
-[Diagram + write path + read path walked end to end]
+## 6. High-level architecture
+[Diagram. The write path from start to end. The read path from start to end.]
 
-## 7. Deep Dives
-[2–3 components in detail, each with its hazard scan]
+## 7. Detailed components
+[2 or 3 components, each with its hazard scan]
 
-## 8. Bottlenecks, Failure Modes, Operations
-[Section 2, Step 7]
+## 8. Bottlenecks, failure modes, and operations
+[Use the format in Section 2, Step 7]
 
-## 9. Trade-offs & Alternatives Considered
-| Decision | Chosen | Alternative | Why rejected |
+## 9. Trade-offs and rejected alternatives
+| Decision | We chose | Alternative | Why we rejected it |
 |---|---|---|---|
 
-## 10. Open Questions & Risks
-[What needs a human decision; what we're unsure about]
+## 10. Open questions and risks
+[What needs a decision from a person. What we are unsure about.]
 ```
 
 ---
 
-# 4. TRADE-OFF DISCIPLINE
+# 4. HOW TO RECORD A TRADE-OFF
 
-**There is no right answer, and there is no best answer.** A design for a startup with
-1,000 users is *correctly different* from a design for 100 million. A design that would be
-wrong at scale can be exactly right today.
+**There is no correct answer. There is no best answer.**
 
-Every significant decision states the alternative and why it lost:
+A design for a startup with 1,000 users is different from a design for 100 million users.
+Both can be correct. A design that fails at a large scale can be correct today.
 
-| Decision | Chosen | Alternative | Why rejected |
+Record every important decision in this format:
+
+| Decision | We chose | Alternative | Why we rejected it |
 |---|---|---|---|
-| Feed generation | Hybrid push/pull | Pure fan-out-on-write | Celebrity accounts make write fan-out unbounded |
-| Store | Postgres | Cassandra | Need multi-row transactions; volume fits one shard for 2+ years |
-| Comms | WebSocket | Long polling | Bidirectional, <100ms delivery required |
+| Feed generation | Push for small accounts, pull for large accounts | Push for all accounts | An account with many followers makes the write cost unbounded |
+| Database | Postgres | Cassandra | We need transactions across rows. One node holds the data for more than 2 years. |
+| Client protocol | WebSocket | Long polling | We must send data in both directions in less than 100 ms |
 
-If you cannot name a real alternative, you have not made a decision — you have made an
-assumption.
-
----
-
-# 5. SIMPLICITY AS A DESIGN CONSTRAINT
-
-Over-engineering is a design *defect*, not a sign of thoroughness. The counterweight, from
-Kanat-Alexander's laws of software design:
-
-- **The purpose of software is to help people.** A design that serves elegance rather than
-  users has failed regardless of its properties.
-- **The Equation of Software Design:** desirability = (value now + future value) ÷
-  (effort of implementation + effort of maintenance). Over time this reduces to a single
-  conclusion: **reducing the effort of maintenance matters more than reducing the effort of
-  implementation.** A design that is quick to build and expensive to operate is a bad
-  design.
-- **The Law of Simplicity:** ease of maintenance is proportional to the simplicity of the
-  individual pieces. Maintenance effort is proportional to system complexity — so every
-  component you add is a permanent tax.
-- **Do not predict the future.** The most common and disastrous error is designing for a
-  future you cannot know. Design from what is known *now*. Be only as generic as you know
-  you need to be right now.
-- **The best design allows the most change in the environment with the least change in the
-  software** — which is different from, and much more valuable than, building for every
-  hypothetical requirement.
-
-**The concrete test:** for every component in the diagram, ask "what happens if we remove
-it?" If the answer is "nothing, at our current numbers", remove it. Add it back when the
-numbers say so.
-
-Deep dive: `references/06-simplicity-and-design-laws.md`
+If you cannot name a real alternative, you did not make a decision. You made an assumption.
 
 ---
 
-# 6. RED FLAGS IN A DESIGN
+# 5. SIMPLICITY IS A REQUIREMENT
 
-| Red flag | What it looks like | Correction |
+An architecture that is too large is a **defect**. It is not evidence of care.
+
+Kanat-Alexander gives the laws that control this. Five of them apply here:
+
+- **Software exists to help people.** A design that serves elegance instead of users has
+  failed. Its technical properties do not change that result.
+
+- **The equation of software design.** How much we want a change equals (value now + future
+  value) divided by (effort to build + effort to maintain). Over time, one conclusion
+  remains: **effort to maintain matters more than effort to build.** A design that is fast to
+  build and expensive to operate is a bad design.
+
+- **The law of simplicity.** Maintenance effort is proportional to the complexity of each
+  part. Every component that you add is a permanent cost.
+
+- **Do not predict the future.** The most frequent and most damaging error is a prediction
+  that you cannot make. Design from what you measure now. Make the design only as general as
+  you need it to be now.
+
+- **The best design permits the largest change in the environment with the smallest change in
+  the software.** That is not the same as a design that covers every possible future
+  requirement. It is the opposite.
+
+**The test:** for each component in the diagram, ask this question. *What breaks if we remove
+this component, at the load we measure today?* If the answer is "nothing", remove it. Add it
+again when a number requires it.
+
+For the full set of tests, read `references/06-simplicity-and-design-laws.md`.
+
+---
+
+# 6. FAULTS TO FIND IN A DESIGN
+
+| Fault | How it looks | Correction |
 |---|---|---|
-| **Solution before scope** | Architecture proposed before requirements are written | Go back to Step 1 |
-| **Over-engineering** | Microservices, Kafka, and a service mesh for 100 QPS | Justify each component from the Step 3 numbers |
-| **Numberless design** | "It should scale fine" | Do the estimation |
-| **Even attention** | Every component described at the same shallow depth | Pick 2–3 for the deep dive |
-| **No failure story** | Only the happy path is drawn | Complete Step 7 |
-| **Buzzword substitution** | "eventually consistent", "we'll cache it" with no mechanism | See the language-discipline table in `data-systems-design` |
-| **Unfalsifiable claims** | "This is web scale" | State the parameter, the value, and the saturation point |
-| **No alternatives** | One option presented as inevitable | Name what lost and why |
-| **Prediction** | Built for a scale nobody has asked for | Design for known load; note the next curve |
-| **Never finished** | "The design is complete and optimal" | List what you'd improve with more time |
+| **Solution before scope** | The architecture appears before the requirements | Return to Step 1 |
+| **Architecture too large** | Many services and a message broker for 100 QPS | Justify each component from the Step 3 numbers |
+| **No numbers** | The text says "it will scale" | Estimate the load |
+| **Equal attention** | Every component has the same shallow description | Select 2 or 3 components. Design those fully. |
+| **No failure plan** | The design shows only the path where nothing fails | Complete Step 7 |
+| **Vague terms** | The text says "eventually consistent" or "we will cache it" with no mechanism | Read the language rules in `data-systems-design` |
+| **Claims you cannot test** | The text says "this design scales to any load" | Name the value, the current number, and the saturation point |
+| **No alternatives** | One option appears as the only option | Name the alternative and why it lost |
+| **Prediction** | The design serves a load that nobody measured | Design for the measured load. Record the next scale step. |
+| **Never finished** | The text says "the design is complete and optimal" | Record what you would improve with more time |
 
 ---
 
-# 7. PROPORTIONALITY
+# 7. HOW MUCH OUTPUT EACH TASK NEEDS
 
-| Change class | Output |
+| Type of change | Output |
 |---|---|
-| Fits an existing pattern, no new infrastructure | Nothing from this skill |
-| New endpoint or job on existing infrastructure | Steps 1–2 inline (requirements + interface), a few sentences |
-| New feature with new storage, cache, or queue | Steps 1–5 + hazard scan; short design doc |
-| New service, or a significant scale/architecture change | All 7 steps; full design doc |
-| Money, auth, PII, or an irreversible migration | All 7 steps + explicit integrity and rollback sections |
+| Fits a pattern that exists. Adds no infrastructure. | Nothing from this skill |
+| A new endpoint or job on infrastructure that exists | Steps 1 and 2 only, in a few sentences |
+| A new feature that adds storage, a cache, or a queue | Steps 1 to 5, plus the hazard scan. A short design document. |
+| A new service, or a large change to scale or architecture | All 7 steps. A full design document. |
+| Money, authentication, personal data, or a migration you cannot reverse | All 7 steps, plus a section on data integrity and a section on rollback |
 
-A design document for a change that does not need one is itself waste — it costs review
-time and then goes stale. Match the artifact to the decision.
+A design document for a change that does not need one is waste. It costs review time. Then
+it becomes wrong as the system changes. Match the document to the decision.
 
 ---
 
 # 8. REFERENCE INDEX
 
-| Reference | Covers | Read when |
+| Reference | Content | Read it when |
 |---|---|---|
-| `references/01-design-method.md` | The 7 steps in depth; question banks; effort allocation; interview vs. real-world differences | Running a design end to end |
-| `references/02-estimation.md` | Powers of two, latency numbers, availability nines, QPS/storage/bandwidth/cache/server formulas, worked examples | Step 3, or any "will it scale" question |
-| `references/03-scaling-ladder.md` | Single server → LB → replication → cache → CDN → stateless tier → multi-DC → queue → sharding → services, with the trigger for each step | Deciding what to add next, or reviewing a scaling plan |
-| `references/04-building-blocks.md` | Load balancers, caching, CDN, proxies, indexes, queues, consistent hashing, rate limiting, unique IDs, polling/WebSocket/SSE | Choosing a component |
-| `references/05-database-selection.md` | Evaluation methodology, SQL vs. NoSQL, storage engine internals, benchmarking honestly | Choosing or defending a datastore |
-| `references/06-simplicity-and-design-laws.md` | Equation of software design, six laws, three flaws, over-engineering detection | Any design that feels large; any review |
-| `references/07-reference-architectures.md` | Worked patterns: URL shortener, feed fan-out, chat, notifications, crawler, file sync, autocomplete, video | Recognizing which known pattern applies |
+| `references/01-design-method.md` | The 7 steps in full. The questions to ask. How to divide the effort. | You run a design from start to end |
+| `references/02-estimation.md` | Powers of two. Latency numbers. Availability tables. Formulas for QPS, storage, bandwidth, cache, and server count. Worked examples. | Step 3, or any question about scale |
+| `references/03-scaling-ladder.md` | The order in which to add infrastructure, from one server to a partitioned database. The signal that triggers each step. | You decide what to add next |
+| `references/04-building-blocks.md` | Load balancers, caches, CDNs, proxies, indexes, queues, consistent hashing, rate limiting, ID generation, and client protocols | You select a component |
+| `references/05-database-selection.md` | How to evaluate a database. SQL compared to NoSQL. Storage engine trade-offs. How to run an honest benchmark. | You select or defend a database |
+| `references/06-simplicity-and-design-laws.md` | The equation of software design. The six laws. The three flaws. Tests for an architecture that is too large. | Any design that feels large. Any review. |
+| `references/07-reference-architectures.md` | Worked patterns: URL shortener, feed fan-out, chat, notifications, crawler, file sync, autocomplete, and video | You identify which known pattern applies |
 
-Companion skill: **`data-systems-design`** — correctness under concurrency and failure
-(isolation levels, replication anomalies, the 48-hazard catalog). Every deep dive should
-run its hazard scan.
+**Related skill: `data-systems-design`.** It covers correctness during concurrent operation
+and during failures. It covers isolation levels, replication anomalies, and a list of 48
+named hazards. Run its hazard scan on every component that you design in detail.
 
 ---
 
-**Attribution:** methodology and numbers are drawn from *System Design Interview: An
-Insider's Guide* (Alex Xu, 2020), *Grokking the System Design Interview* (Design Gurus),
-*Database Internals* (Alex Petrov, O'Reilly 2019), and *Code Simplicity* (Max
-Kanat-Alexander, O'Reilly 2012).
+**Sources.** The method and the numbers come from these books:
+
+- *System Design Interview: An Insider's Guide*, Alex Xu, 2020
+- *Grokking the System Design Interview*, Design Gurus
+- *Database Internals*, Alex Petrov, O'Reilly, 2019
+- *Code Simplicity*, Max Kanat-Alexander, O'Reilly, 2012

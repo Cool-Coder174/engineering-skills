@@ -1,248 +1,279 @@
-# Choosing a Database
+# How to Select a Database
 
-**Sources:** *Database Internals* (Alex Petrov) — "Comparing Databases", DBMS architecture,
-B-Tree vs. LSM trade-offs, RUM Conjecture; *Grokking the System Design Interview* —
-SQL vs. NoSQL; *System Design Interview* Ch. 1 (Xu).
+**Sources:** *Database Internals* (Alex Petrov), for the comparison method, the DBMS
+architecture, the B-Tree and LSM trade-offs, and the RUM Conjecture. *Grokking the System
+Design Interview*, for SQL compared to NoSQL. *System Design Interview*, Chapter 1 (Xu).
 
-> "Your choice of database system may have long-term consequences. If there's a chance that
-> a database is not a good fit because of performance problems, consistency issues, or
-> operational challenges, it is better to find out about it earlier in the development
-> cycle, since it can be nontrivial to migrate to a different system."
+Petrov states the reason to take care:
 
-This is one of the least reversible decisions in a design. Treat it accordingly.
+> "Your choice of database system may have long-term consequences. If there's a chance that a
+> database is not a good fit because of performance problems, consistency issues, or
+> operational challenges, it is better to find out about it earlier in the development cycle,
+> since it can be nontrivial to migrate to a different system."
+
+This decision is one of the hardest to reverse.
 
 ---
 
-## 1. How NOT to choose
+## 1. How not to select a database
 
-Petrov is explicit about the failure modes:
+Petrov names three methods that fail:
 
-Comparing databases by **their components** (which storage engine, how data is sharded or
-replicated), by **their rank** (DB-Engines, consultancy popularity lists), or by
-**implementation language** (C++ vs. Java vs. Go) "can lead to invalid and premature
-conclusions." These are coarse signals, useful only for distinguishing something as
-different as HBase from SQLite.
+1. **Comparison by component.** Which storage engine does it use? How does it partition and
+   replicate?
+2. **Comparison by rank.** DB-Engines, popularity lists, and consultancy reports.
+3. **Comparison by implementation language.** C++, Java, or Go.
 
-Add the common organizational failure modes:
+All three "can lead to invalid and premature conclusions". They are coarse signals. They help
+only for a comparison as broad as HBase against SQLite.
 
-- **Choosing by résumé.** Picking the technology someone wants to learn.
-- **Choosing by anecdote.** "Company X uses it at scale" — at a scale and workload you do
-  not have, with an infrastructure team you do not have.
-- **Choosing by benchmark blog post.** Vendor benchmarks measure the vendor's workload.
-- **Choosing by the shape of the data alone.** Access patterns select the store; the entity
-  diagram does not.
+Four more failures occur inside organizations:
 
-**Every comparison should start by clearly defining the goal**, because even a slight bias
-invalidates the entire investigation.
+4. **Selection by career interest.** Someone wants to learn the technology.
+5. **Selection by anecdote.** "Company X runs it at scale." That company has a different
+   scale, a different workload, and an infrastructure team that you do not have.
+6. **Selection by vendor benchmark.** A vendor benchmark measures the vendor's workload.
+7. **Selection by data shape alone.** The access patterns select the database. The entity
+   diagram does not.
+
+**Start every comparison with a stated goal.** A small bias invalidates the whole
+investigation.
 
 ---
 
 ## 2. The evaluation method
 
-### Step 1 — Define the current and anticipated variables
+### Step 1 — Record the current and expected values
 
 Petrov's list:
 
-- **Schema and record sizes**
-- **Number of clients**
-- **Types of queries and access patterns**
-- **Rates of read and write queries**
-- **Expected changes in any of these variables**
+- Schema and record sizes
+- Number of clients
+- Types of queries and access patterns
+- Rates of read and write queries
+- **Expected changes in any of these values**
 
-That last item matters most and is most often skipped. A store that fits today's numbers
-and cannot absorb 10× growth is a migration you have scheduled without admitting it.
+The last item matters most, and teams skip it most often. A database that fits today's
+numbers and cannot absorb 10 times the load is a migration that you scheduled without saying
+so.
 
-### Step 2 — Answer these questions with those variables
+### Step 2 — Answer these questions with those values
 
-- Does the database **support the required queries**?
-- Can it **handle the amount of data** we plan to store?
-- **How many read and write operations can a single node handle?**
-- **How many nodes should the system have?**
-- **How do we expand the cluster** given the expected growth rate?
-- **What is the maintenance process?**
+- Does the database support the queries that we need?
+- Can it hold the volume of data that we plan to store?
+- How many reads and writes can one node handle?
+- How many nodes does the system need?
+- How do we grow the cluster at the expected rate?
+- What is the maintenance process?
 
-### Step 3 — Simulate the actual workload
+### Step 3 — Run your own workload
 
-"The best thing you can do is to simulate these workloads against different database
-systems, measure the performance metrics that are important for you, and compare results."
+Petrov's instruction:
 
-Two points that make or break this:
+> "The best thing you can do is to simulate these workloads against different database
+> systems, measure the performance metrics that are important for you, and compare results."
 
-- **Some issues only appear over time or as capacity grows.** Run long tests in an
-  environment simulating production as closely as possible. A benchmark that runs for five
-  minutes against an empty database tells you nothing about compaction behavior, index
-  bloat, vacuum pressure, or GC pauses — which is where the real problems are.
-- **Simulating real workloads also teaches you to operate, debug, and evaluate the
-  community.** That is a deliverable of the exercise, not a side effect. Most stress tools
-  shipped with databases can be adapted to your workload.
+Two points decide whether this test is useful.
 
-### Step 4 — Weigh operability alongside performance
+**Run the test for a long time, on a production-like system.** Some problems appear only
+after time passes or after the data grows. A five-minute test against an empty database tells
+you nothing about compaction, index growth, vacuum pressure, or garbage collection pauses.
+Those are the real problems.
+
+**The test also teaches you to operate and debug the database.** It shows you how helpful the
+community is. That knowledge is an output of the test, not a side effect. Most databases ship
+a stress tool that you can adapt.
+
+### Step 4 — Weigh operability with performance
+
+Petrov states the priority:
 
 > "Performance often turns out **not** to be the most important aspect: it's usually much
 > better to use a database that slowly saves the data than one that quickly loses it."
 
-Also weigh: your team's existing operational knowledge, backup and restore procedures
-(**tested restores**, not backups), upgrade paths, observability, documentation quality,
-community responsiveness, and licensing.
+Weigh these items as well:
 
-**A database nobody on the team can debug during an incident is the wrong database**,
-whatever the benchmark says.
+- The operational knowledge in your team.
+- The backup and restore procedure, with **a restore that you tested**.
+- The upgrade path.
+- The monitoring support.
+- The documentation and the community.
+- The license.
+
+**A database that nobody on the team can debug during an incident is the wrong database.**
+The benchmark does not change that result.
 
 ---
 
-## 3. Categories and what they are for
+## 3. The categories
 
-| Category | Model | Strong at | Weak at | Choose when |
+| Category | Model | Strong at | Weak at | Select it when |
 |---|---|---|---|---|
-| **Relational (OLTP)** | Tables, rows, SQL, ACID | Multi-entity transactions, ad-hoc queries, integrity constraints, joins | Extreme write volume on a single node; rigid schema migrations | **The default.** Data is structured and relational, you need transactions or strong consistency, or query patterns are not yet stable |
-| **Document** | JSON-like documents | Flexible/evolving schemas, whole-document reads, aggregate storage | Cross-document joins; consistency across documents | Data is naturally a self-contained aggregate; schema varies per record |
-| **Key-value** | Opaque values by key | Very high throughput, very low latency, trivial scaling | Any access not by primary key | Session stores, caches, feature flags, simple lookups at huge volume |
-| **Wide-column** | Partition key + clustering columns | Massive write volume, time-series, predictable partition-scoped queries | Ad-hoc queries, joins, multi-partition transactions | Write rate exceeds relational capacity **and** access patterns are known, fixed, and partition-aligned |
-| **Graph** | Nodes and edges | Multi-hop traversal, relationship queries | Bulk analytics, high write throughput | Traversal depth exceeds 2–3 joins and is the primary query |
-| **Search index** | Inverted index | Full-text, faceting, relevance ranking | Being a system of record | Search is a first-class feature — as a **derived** store, never the source of truth |
-| **Column-oriented (OLAP)** | Columnar | Aggregations over huge scans, compression | Point reads, high-frequency single-row updates | Analytics and warehousing, separated from the OLTP path |
-| **Object storage** | Blobs by key | Cheap, effectively unbounded, durable | Queries of any kind | Media, backups, large files. **Store the blob here and the reference in the database** |
-| **Time-series** | Timestamped points | Time-range queries, downsampling, retention policies | General-purpose workloads | Metrics and telemetry with defined retention |
+| **Relational (OLTP)** | Tables, rows, SQL, ACID | Transactions across entities. Ad-hoc queries. Constraints. Joins. | Very high write volume on one node. Rigid schema changes. | **This is the default.** The data is structured. You need transactions or strong consistency. The query patterns are not yet fixed. |
+| **Document** | JSON-like documents | Schemas that vary and change. Reads of a whole document. | Joins across documents. Consistency across documents. | Each record is complete on its own. The fields vary for each record. |
+| **Key-value** | Values addressed by key | Very high throughput. Very low latency. Simple scaling. | Any access that is not by primary key. | Session stores, caches, feature flags, and simple lookups at high volume |
+| **Wide-column** | Partition key with clustering columns | Very high write volume. Time series. Queries inside one partition. | Ad-hoc queries. Joins. Transactions across partitions. | The write rate exceeds a relational database, **and** the access patterns are fixed and match the partition key |
+| **Graph** | Nodes and edges | Queries that follow many relationships | Bulk analytics. High write volume. | The query follows more than 2 or 3 relationships, and that query is the main one |
+| **Search index** | Inverted index | Full-text search, facets, and ranking | Holding the authoritative data | Search is a main feature. Use it as a **derived** store, never as the authoritative one. |
+| **Column-oriented (OLAP)** | Columnar storage | Aggregation over large scans. Compression. | Single-row reads. Frequent single-row updates. | Analytics and reporting, separated from the transactional system |
+| **Object storage** | Files addressed by key | Cheap. Very large. Durable. | Queries of any kind | Media, backups, and large files. **Store the file here. Store the reference in the database.** |
+| **Time-series** | Timestamped points | Queries over time ranges. Downsampling. Retention rules. | General workloads | Metrics and telemetry with a fixed retention period |
 
-**OLTP vs. OLAP vs. HTAP** (Petrov's grouping): OLTP handles many short, predefined,
-user-facing transactions; OLAP handles complex, long-running aggregations for analytics and
-warehousing; HTAP combines both. **Mixing OLTP and OLAP on one instance is the most common
-version of this mistake** — the analytical query that locks the user-facing table is a
-recurring incident with a well-known fix.
+**Petrov's three system types.** OLTP systems handle many short transactions for users, with
+queries that are mostly known in advance. OLAP systems handle complex aggregations for
+analytics and reporting, with long ad-hoc queries. HTAP systems combine both.
 
----
-
-## 4. SQL vs. NoSQL, stated honestly
-
-**Reasons to use a relational database:**
-- You need **ACID transactions** — anything touching money, inventory, or entitlements
-- Data is **structured and unchanging**, with relationships that matter
-- You need **ad-hoc queries** and do not yet know the access patterns
-- You need **constraints enforced by the store** rather than by every client
-
-**Reasons to use a non-relational database** (Xu's list): super-low latency requirements,
-unstructured or non-relational data, a need only to serialize and deserialize data, or a
-need to store a massive amount of data.
-
-**Three corrections to the usual framing:**
-
-1. **"NoSQL scales, SQL doesn't" is false as stated.** A well-partitioned relational
-   database handles enormous volume, and the practical ceiling for a single modern
-   Postgres/MySQL primary is far higher than most teams assume. Do the estimation
-   (`02-estimation.md`) before concluding you have outgrown it.
-2. **The real trade is transactions and query flexibility for write throughput and
-   operational simplicity at scale.** Name that trade explicitly and check it against your
-   actual requirements.
-3. **Polyglot persistence is normal, and each store is a cost.** Relational as the system of
-   record, object storage for blobs, a search index for search, a cache for hot reads. Each
-   additional store adds a synchronization obligation — and if it is written directly
-   alongside the primary, that is a **dual write** (hazard H-32) and it will diverge.
-   Derive secondary stores from the primary's change log instead.
+**Do not run OLTP and OLAP work on one instance.** This is the most frequent version of the
+mistake. The long analytical query that locks a user-facing table is a recurring incident
+with a known fix.
 
 ---
 
-## 5. Storage engine internals that change design decisions
+## 4. SQL compared to NoSQL
 
-A database is an application built on a storage engine; the storage engine defines what the
-database is actually good at. Engines like BerkeleyDB, LevelDB/RocksDB, LMDB, and WiredTiger
-were developed independently of the systems that embed them — MySQL can run InnoDB, MyISAM,
-or RocksDB; MongoDB has run WiredTiger, In-Memory, and MMAPv1.
+**Select a relational database when:**
 
-### B-Tree vs. LSM Tree
+- You need ACID transactions. Money, inventory, and permissions all need them.
+- The data is structured, and the relationships matter.
+- You need ad-hoc queries, because you do not yet know the access patterns.
+- You need the database to enforce constraints, rather than every client.
 
-| | B-Tree | LSM Tree |
+**Select a non-relational database when** (Xu's list): you need very low latency, the data is
+unstructured, you only serialize and deserialize records, or you store an enormous volume.
+
+**Three corrections to the usual comparison:**
+
+1. **"NoSQL scales and SQL does not" is false as stated.** A partitioned relational database
+   handles very large volumes. One modern Postgres or MySQL primary handles far more than
+   most teams assume. Estimate the load with `02-estimation.md` before you decide that you
+   have exceeded it.
+
+2. **Name the real trade.** You exchange transactions and flexible queries for write
+   throughput and simpler operation at scale. Check that trade against your requirements.
+
+3. **Using several databases is normal, and each one costs.** A typical set has four parts:
+   - A relational database for the authoritative data.
+   - Object storage for files.
+   - A search index for search.
+   - A cache for hot reads.
+
+   Each extra store creates a synchronization obligation. **If the application writes to two
+   stores directly, that is a dual write. It is hazard H-32, and the two stores will
+   diverge.** Derive the second store from the change log of the first one.
+
+---
+
+## 5. Storage engine internals that change a decision
+
+A database is an application built on a storage engine. The storage engine decides what the
+database is good at.
+
+Engines such as BerkeleyDB, LevelDB, RocksDB, LMDB, and WiredTiger were built separately from
+the databases that now contain them. MySQL can run InnoDB, MyISAM, or RocksDB. MongoDB has
+run WiredTiger, In-Memory, and MMAPv1.
+
+### B-Tree compared to LSM Tree
+
+| Property | B-Tree | LSM Tree |
 |---|---|---|
-| Writes | In-place; locate the page, then update, possibly repeatedly | Sequential appends to a memtable, flushed to sorted files |
-| Reads | Read-optimized — a single structure to traverse | Must consult multiple tables; mitigated by Bloom filters and compaction |
-| Write amplification | From writeback and repeated updates to the same page | From compaction rewriting data between files |
-| Space | Extra reserved space for future updates/deletes | Redundant records retained until compaction |
-| Used by | Postgres, MySQL/InnoDB, most relational systems | Cassandra, RocksDB, LevelDB, HBase, ScyllaDB |
+| Writes | In place. Find the page, then update it, sometimes more than once. | Append to a memory table. Flush it to sorted files. |
+| Reads | Optimized. One structure to traverse. | Reads several files. Bloom filters and compaction reduce the cost. |
+| Write amplification | From writeback and repeated updates to one page | From compaction, which rewrites data between files |
+| Space | Reserved space for future updates and deletes | Duplicate records remain until compaction removes them |
+| Databases that use it | Postgres, MySQL with InnoDB, most relational systems | Cassandra, RocksDB, LevelDB, HBase, ScyllaDB |
 
-Petrov's warning: **the sources of write amplification differ between the two, so comparing
-the raw numbers directly leads to incorrect conclusions.**
+**Petrov's warning: the two kinds of write amplification have different causes. If you compare
+the raw numbers directly, you reach an incorrect conclusion.**
 
-Immutable, log-structured storage faces three specific problems: **read amplification**
-(addressing multiple tables to retrieve data), **write amplification** (continuous rewrites
-during compaction), and **space amplification** (multiple records per key preserved for a
-time).
+Immutable, log-structured storage has three specific problems:
+
+1. **Read amplification.** A read must address several files.
+2. **Write amplification.** Compaction rewrites data continuously.
+3. **Space amplification.** Several records for one key remain for a period.
 
 ### The RUM Conjecture
 
-A cost model over three overheads — **R**ead, **U**pdate, **M**emory. It states that
-**reducing two of these inevitably worsens the third**; optimizations come only at the
-expense of one of the three.
+The RUM Conjecture is a cost model with three overheads: **R**ead, **U**pdate, and **M**emory.
 
-- **B-Trees** are read-optimized, paying in write and space overhead.
-- **LSM Trees** are write-optimized, paying in read cost (mitigated by Bloom filters,
-  compaction strategies, and caching).
+**The conjecture states that reducing two of these overheads makes the third one worse. An
+optimization always costs one of the three.**
 
-The model deliberately excludes latency, access patterns, implementation complexity,
-maintenance overhead, hardware specifics, and — for distributed systems — consistency and
-replication overhead. **Use it as a first approximation, not a verdict.**
+- **B-Trees** optimize reads. They pay in write cost and space.
+- **LSM Trees** optimize writes. They pay in read cost. Bloom filters, compaction strategies,
+  and caches reduce that cost.
 
-**Why this matters at design time:** if your workload is write-dominated with mostly
-key-range reads, an LSM engine matches it. If it is read-dominated with ad-hoc queries and
-point lookups, a B-Tree engine matches it. Choosing against the grain means fighting the
-storage engine forever, and no amount of tuning fixes a structural mismatch.
+The model excludes several important factors: latency, access patterns, implementation
+complexity, maintenance work, and hardware. For distributed databases, it also excludes
+consistency and replication cost. **Use it as a first approximation, not as a verdict.**
 
-### Other axes
+**Why this matters during design.** Suppose the workload is mostly writes, with reads over key
+ranges. Then an LSM engine matches it. Suppose the workload is mostly reads, with ad-hoc
+queries and single-row lookups. Then a B-Tree engine matches it. If you select against the
+workload, you fight the storage engine forever. No amount of tuning corrects a structural
+mismatch.
 
-- **Memory- vs. disk-based:** in-memory stores are dramatically faster and bounded by RAM
-  and durability strategy. "In-memory with persistence" still has a durability window —
-  know exactly what it is before putting money in it.
-- **Row- vs. column-oriented:** row layout suits fetching whole records (OLTP); column
-  layout suits scanning few columns across many rows (OLAP), and compresses far better.
+### Two more properties
+
+- **Memory compared to disk.** An in-memory database is much faster. RAM and the durability
+  method limit it. "In-memory with persistence" still has a window in which it can lose data.
+  Learn the exact size of that window before you store money in it.
+- **Rows compared to columns.** Row storage suits reads of whole records, which is OLTP work.
+  Column storage suits scans of a few columns across many rows, which is OLAP work. Column
+  storage also compresses much better.
 
 ---
 
-## 6. The decision record
+## 6. Record the decision
 
-Write this down. Six months from now nobody will remember why, and the reasoning is what
-lets a future engineer revisit the decision correctly.
+Write this record. In six months, nobody will remember the reasons. The reasons are what
+permit a future engineer to revisit the decision correctly.
 
 ```md
-### Datastore Decision: [component]
+### Database decision: [component]
 
-**Access patterns** (top N by frequency)
+**Access patterns** (the most frequent ones)
 | Pattern | Frequency | Latency need | Consistency need |
 |---|---|---|---|
 
-**Variables**
-- Record size: [ ]      - Total volume now / at 1 yr / at 3 yr: [ ]
-- Read QPS / Write QPS (avg, peak): [ ]
-- Clients: [ ]          - Expected change in the above: [ ]
+**Values**
+- Record size: [ ]
+- Total volume now, after 1 year, after 3 years: [ ]
+- Read QPS and write QPS, average and peak: [ ]
+- Number of clients: [ ]
+- Expected change in the values above: [ ]
 
-**Chosen:** [store] — [version, deployment model]
+**We chose:** [database, version, deployment model]
 
-**Why:** [tied to the access patterns and variables above, not to preference]
+**Why:** [connect the reason to the access patterns and values above, not to preference]
 
-**Rejected:**
-| Alternative | Why not |
+**We rejected:**
+| Alternative | Why we rejected it |
 |---|---|
 
-**Verified by:** [load test, existing production evidence, or "unverified — assumption"]
+**Evidence:** [a load test, production data, or "no evidence. This is an assumption."]
 
-**Operability:** who operates it, backup/restore procedure, **last tested restore**,
-upgrade path, existing team experience
+**Operations:** who operates it. The backup and restore procedure. **The date of the last
+tested restore.** The upgrade path. The experience in the team.
 
-**Scaling path:** what we do when [variable] reaches [value]
+**Growth plan:** what we do when [value] reaches [number]
 
-**Exit cost:** how hard is migrating off this — and what makes it harder over time
+**Exit cost:** how hard is a migration away from this database. What makes it harder over
+time.
 ```
 
 ---
 
-## 7. Red flags in a database choice
+## 7. Faults to find in a database decision
 
-| Red flag | Why it's a problem |
+| Fault | Why it is a problem |
 |---|---|
-| Chosen before access patterns were written down | The patterns select the store; anything else is a guess |
-| "It scales better" with no numbers | Do the estimation; the current store often has years of headroom |
-| Benchmarked for 5 minutes on an empty dataset | Compaction, bloat, vacuum, and GC problems only appear at volume and over time |
-| Nobody on the team has operated it in production | The incident will be your training exercise |
-| Chosen for a scale nobody has requested | Designing for an unknown future — the most common and disastrous design error |
-| Blobs stored in the database | Object storage is orders of magnitude cheaper and keeps the database small |
-| Search index or cache treated as a system of record | Derived stores are rebuildable by definition; if it cannot be rebuilt, it is not derived |
-| Multiple stores written directly by the application | Dual write (H-32). Derive from a change log instead |
-| Analytical queries on the OLTP primary | The long scan that locks the user-facing table |
-| No tested restore | You have backups; you do not have recovery |
+| The team chose before it recorded the access patterns | The access patterns select the database. Any other basis is a guess. |
+| The reason is "it scales better", with no numbers | Estimate the load. The current database often has years of capacity. |
+| The benchmark ran for 5 minutes on an empty database | Compaction, index growth, vacuum, and garbage collection appear only at volume and over time |
+| Nobody on the team has operated it in production | The first incident becomes the training exercise |
+| The team chose for a scale that nobody requested | This is a prediction. It is the most frequent and most damaging design error. |
+| Files are stored in the database | Object storage costs far less and keeps the database small |
+| A search index or a cache holds the authoritative data | A derived store must be rebuildable. If you cannot rebuild it, it is not derived. |
+| The application writes to several stores directly | This is a dual write (hazard H-32). Derive the second store from a change log. |
+| Analytical queries run on the transactional database | The long scan locks a user-facing table |
+| Nobody has tested a restore | You have backups. You do not have recovery. |
