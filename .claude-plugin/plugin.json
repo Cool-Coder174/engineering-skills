@@ -1,0 +1,9 @@
+{
+  "name": "engineering-skills",
+  "description": "Agent Skills for senior-engineer workflow: clarify, estimate, design, implement, verify, review.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Cool-Coder174",
+    "url": "https://github.com/Cool-Coder174"
+  }
+}

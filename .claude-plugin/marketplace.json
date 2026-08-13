@@ -1,0 +1,17 @@
+{
+  "name": "engineering-skills",
+  "owner": {
+    "name": "Cool-Coder174",
+    "url": "https://github.com/Cool-Coder174"
+  },
+  "metadata": {
+    "description": "Skills that make an agent work like a senior engineer, grounded in DDIA, Stallings, APUE, and five other texts."
+  },
+  "plugins": [
+    {
+      "name": "engineering-skills",
+      "source": "./",
+      "description": "Design, estimation, security engineering, planning, implementation, and code review."
+    }
+  ]
+}
