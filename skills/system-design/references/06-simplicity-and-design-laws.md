@@ -180,7 +180,7 @@ Three systems deserve three different levels of effort:
 Applying ten-year rigor to a two-week experiment is waste. Applying prototype rigor to a
 payment system is negligence.
 
-This law produces the table in `SKILL.md`, Section 7.
+This law produces the table in `../SKILL.md`, Section 7.
 
 ---
 
