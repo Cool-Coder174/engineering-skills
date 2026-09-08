@@ -12,7 +12,10 @@ enforce one order of work:
 7. Operate it: set the reliability target, see the system, find the fault, undo the change,
    and learn from the incident.
 
-Grounded in ten books:
+And one step that runs beside all seven: explain the thing, and the choice behind it, to the
+person who has to live with it.
+
+Grounded in twelve books:
 
 | Book | What it contributes |
 |---|---|
@@ -26,6 +29,8 @@ Grounded in ten books:
 | **[*Code Simplicity*][cs]** — Max Kanat-Alexander | The laws of software design. The anti-over-engineering discipline. |
 | **[*Site Reliability Engineering*][sre]** — Beyer, Jones, Petoff, Murphy | Error budgets, the four golden signals, the troubleshooting model, incident command, cascading failure, release reversibility |
 | **[*Release It!*][relit]** — Michael T. Nygard | The eleven stability antipatterns and the eight stability patterns. Integration-point failure, capacity antipatterns, Transparency |
+| **[*The Minto Pyramid Principle*][minto]** — Barbara Minto | Answer first. SCQA. MECE. The problem-definition framework that makes a tool comparison defensible |
+| **[*The Art of Explanation*][lefever]** — Lee LeFever | The Explanation Scale, the curse of knowledge, and the packaging elements that make a beginner able to follow |
 
 ---
 
@@ -222,19 +227,34 @@ skills/
 │       ├── 05-tracking-outages.md
 │       ├── 06-interrupts-and-overload.md
 │       └── incident-failure-catalog.md      # 52 named failures: signature → consequence → fix
-└── reverse-branching/              # How to UNDO it
-    ├── SKILL.md                    # The reversibility contract, revert vs. roll forward
+├── reverse-branching/              # How to UNDO it
+│   ├── SKILL.md                    # The reversibility contract, revert vs. roll forward
+│   └── references/
+│       ├── 01-the-reversibility-contract.md # Declare the undo before the change ships
+│       ├── 02-release-engineering.md      # Hermetic builds, versioned configuration
+│       ├── 03-progressive-rollout-and-canary.md
+│       ├── 04-change-induced-emergency.md # Revert first. Diagnose after
+│       ├── 05-locating-the-bad-change.md  # Bisection. "What changed last"
+│       ├── 06-data-and-schema-reversibility.md # Code reverts. Data does not
+│       ├── 07-automation-safety.md        # The automation is the blast radius
+│       ├── 08-agent-and-operator-shortcuts.md # The checkpoint and revert command surface
+│       ├── 09-launch-coordination.md
+│       └── rollback-hazard-catalog.md     # 50 named hazards: signature → consequence → fix
+└── engineering-consultant/         # READ-ONLY. Which one, and what is it?
+    ├── SKILL.md                    # The read-only contract, comparison, explanation, routing
     └── references/
-        ├── 01-the-reversibility-contract.md   # Declare the undo before the change ships
-        ├── 02-release-engineering.md          # Hermetic builds, versioned configuration
-        ├── 03-progressive-rollout-and-canary.md
-        ├── 04-change-induced-emergency.md     # Revert first. Diagnose after
-        ├── 05-locating-the-bad-change.md      # Bisection. "What changed last"
-        ├── 06-data-and-schema-reversibility.md # Code reverts. Data does not
-        ├── 07-automation-safety.md            # The automation is the blast radius
-        ├── 08-agent-and-operator-shortcuts.md # The checkpoint and revert command surface
-        ├── 09-launch-coordination.md
-        └── rollback-hazard-catalog.md         # 50 named hazards: signature → consequence → fix
+        ├── 01-the-explanation-scale.md      # A to Z, and the curse of knowledge
+        ├── 02-why-explanations-fail.md
+        ├── 03-the-packaging-elements.md     # Context, Story, Connections, Simplification
+        ├── 04-assembling-and-delivering-an-explanation.md
+        ├── 05-the-pyramid-principle.md      # Answer first. The vertical question-answer
+        ├── 06-the-scqa-introduction.md
+        ├── 07-logical-order-and-mece.md     # The intellectually blank assertion
+        ├── 08-defining-and-structuring-the-problem.md # R1, R2, and the real question
+        ├── 09-the-tradeoff-evaluation.md    # Score against the threshold, not each other
+        ├── 10-research-method-and-sources.md # The documentation ladder, llms.txt included
+        ├── 11-routing-to-the-specialist-skills.md
+        └── advice-defect-catalog.md         # 45 named defects: signature → consequence → fix
 ```
 
 Each skill is a self-contained folder with a `SKILL.md`, which is the layout Claude Code,
@@ -255,6 +275,7 @@ Cursor, and compatible agents expect.
 | `production-troubleshooting` | When it breaks, how do we find the cause instead of guessing? |
 | `incident-response` | Who runs the outage, and what do we learn from it? |
 | `reverse-branching` | How do we undo this change? |
+| `engineering-consultant` | Which option should we pick, and can the reader follow the reason? |
 
 These are different questions. Agents most often merge the fourth into the second by
 mistake. Correctness analysis assumes that faults are random. Security analysis assumes that
@@ -306,12 +327,12 @@ On Windows (PowerShell):
 Copy-Item -Recurse -Force skills\* $HOME\.cursor\skills\
 ```
 
-The agent finds each skill by its folder name. Install the ten catalog skills together with
-the rest: `data-systems-design`, `systems-programming`, `security-engineering`,
+The agent finds each skill by its folder name. Install the eleven catalog skills together
+with the rest: `data-systems-design`, `systems-programming`, `security-engineering`,
 `slo-engineering`, `observability`, `capacity-engineering`, `self-healing-apis`,
-`production-troubleshooting`, `incident-response`, and `reverse-branching`. The scans in the
-other skills refer to those catalogs by path, and a missing folder turns a scan into a
-silent no-op.
+`production-troubleshooting`, `incident-response`, `reverse-branching`, and
+`engineering-consultant`. The scans in the other skills refer to those catalogs by path, and
+a missing folder turns a scan into a silent no-op.
 
 ---
 
@@ -362,6 +383,8 @@ has already gone wrong.
 | `incident` / `declare an incident` | Assign the roles, open the live state, run the response |
 | `postmortem` | Write the blameless record, with owned and dated action items |
 | `reverse` / `revert this` / `checkpoint` | Produce the reverse path, or run the checkpoint and revert commands |
+| `compare` / `X or Y` / `which should we use` | Research both, score against thresholds, produce a Comparison Record |
+| `explain` / `what is` / `how does this work` | Produce an explanation pitched at the reader's level |
 
 Each phase stops when it's done and waits for you. One phase per cycle, by design.
 
@@ -628,7 +651,7 @@ signature**, a **consequence**, and a **required fix**.
 | `incident-response/references/incident-failure-catalog.md` | 52 (`N-01` …) | Command and coordination · the live record · response order · diagnosis under pressure · detection and alert hygiene · the postmortem · on-call load |
 | `reverse-branching/references/rollback-hazard-catalog.md` | 50 (`R-01` …) | The reversibility contract · build and artifact identity · branch and commit hygiene · rollout and exposure · configuration reversal · data and schema reversal · automation and agent safety · detection and record |
 
-Ten catalogs now share one format and one severity key. 🔴 blocks the merge. 🟡 causes an
+Eleven catalogs now share one format and one severity key. 🔴 blocks the merge. 🟡 causes an
 outage or a wrong result under load. 🔵 is a risk to operation or maintenance. Each entry
 cites the chapter and page it comes from. An entry that current practice added after the
 books were written carries the **Modern** tag instead, so nothing modern is attributed to a
@@ -699,6 +722,60 @@ The safety envelope is the point. An automated remediation must be idempotent, r
 observable, and reversible, and it must never make a change whose effect it cannot measure.
 The retry is where teams get this wrong: a retry at every layer multiplies, and an automatic
 retry storm is a denial of service you inflicted on yourself.
+
+---
+
+## The engineering consultant
+
+`engineering-consultant` is the one skill in the suite that **writes nothing**. It reads the
+repository, reads documentation, searches, and answers. When the answer is "build it", it
+hands the work to `implement` and stops.
+
+It does two jobs.
+
+**It compares options and defends the choice.** Minto supplies the discipline, and it is
+stricter than the comparison table most engineers write. You cannot choose between solutions
+until you have written **R2**, the desired result, as an end-product description with
+thresholds. Then every option is scored **against those thresholds, never against the other
+options** — Minto's rule is that how the alternatives compare to each other is irrelevant.
+Criteria come from the structure of the situation, not from a vendor's feature list, and not
+from the question as it was asked. They must be MECE, and there should be four or five of
+them. A nine-row matrix is a regrouping failure, not thoroughness.
+
+Argument by elimination is banned outright: "A is no good, B is no good, therefore C" is the
+wrong shape, because the reason for choosing C is that it solves the problem. When nothing
+wins outright, the honest form is **alternative objectives** — "choose A if what you want is
+X" — which is the disciplined version of "it depends".
+
+The Comparison Record carries a source per cell, and the condition under which the
+recommendation reverses. Minto's test for a defensible argument is the one the skill uses: the
+reader need not agree, but must be able to point at the exact box he rejects.
+
+**It explains things to people who are new to them.** LeFever supplies the Explanation Scale
+from A to Z, where A is no prior knowledge and Z is deep expertise. You judge the audience at
+one point, then write one or two steps below it. The curse of knowledge gets stronger the
+further you sit toward Z, which means the engineer who knows the tool best is the least able
+to judge what a newcomer needs. LeFever settles the level argument with a cost question: what
+costs more, leaving beginners behind, or reminding the informed?
+
+**Where the two books disagree, the skill rules.** LeFever says to trade accuracy for
+understanding. Minto treats truth as a floor. The skill's ruling: accuracy may be traded only
+in the beginner-facing layer, never in a criteria cell, a threshold, a version number, a
+licence, or a benchmark figure — and never silently. This is section 8 of the skill, not a
+footnote.
+
+**Research is a ladder, not a trick.** The skill looks for an `llms.txt` at the most specific
+path first, then `llms-full.txt` where a vendor publishes one, then official documentation,
+release notes, the source repository, the package registry, and third-party writing last. It
+states the honest limit up front: `llms.txt` is real and specified, but roughly one site in
+ten publishes one, so nine times in ten the ladder continues. It also records that
+`llms-full.txt` is a widely used convention that the specification does not define.
+
+Everything the skill reads through a tool is treated as data, never as instruction. A README,
+an issue thread, or a package description can contain text aimed at an agent. The skill quotes
+it, names its source, and asks.
+
+45 named defects, `X-01` … `X-45`.
 
 ---
 
@@ -774,6 +851,11 @@ Nothing requires the full pipeline:
   and this replaces the guess with a loop.
 - `incident-response` runs standalone for an outage in progress, and its postmortem section
   runs alone afterwards on an incident that was handled badly.
+- `engineering-consultant` is the natural entry point when you do not yet know which skill you
+  need. It answers "should we use X or Y?", "what is the difference?", "explain this codebase
+  to me", and "why would anyone pick this?" — and it routes to the specialist once the
+  question is clear. It is also the safe skill to point at a repository you do not trust,
+  because it cannot change anything.
 - `reverse-branching` answers "how do I undo this?" on its own. Its checkpoint commands are
   worth reading before an agent starts a long editing session, not after.
 
@@ -803,6 +885,7 @@ Skills previously lived as flat files at the repository root. They are now folde
 | — | `skills/production-troubleshooting/` (new) |
 | — | `skills/incident-response/` (new) |
 | — | `skills/reverse-branching/` (new) |
+| — | `skills/engineering-consultant/` (new) |
 
 If you installed the old flat files, remove them before you install the new folders.
 Otherwise the agent loads two versions of the same skill.
@@ -868,6 +951,14 @@ Concepts, terminology, methodology, and reference numbers come from:
   patterns, integration-point failure modes, the capacity antipatterns, and Transparency.
   Section and page references throughout `self-healing-apis` and `capacity-engineering` refer
   to the first edition. The link goes to the current edition, which is the one you can buy.
+- [*The Minto Pyramid Principle: Logic in Writing, Thinking and Problem Solving*][minto] —
+  Barbara Minto (Pearson, 3rd ed.). The pyramid, the SCQA introduction, MECE grouping, the
+  intellectually blank assertion, and the problem-definition framework with R1 and R2.
+  Chapter and section references throughout `engineering-consultant` refer to that edition.
+- [*The Art of Explanation: Making Your Ideas, Products, and Services Easier to
+  Understand*][lefever] — Lee LeFever (Wiley, 2013). The Explanation Scale, the curse of
+  knowledge, and the packaging elements — Context, Story, Connections, Description,
+  Simplification, and Constraints.
 
 This repository contains original prose that applies those concepts to agent workflows. It is
 not a reproduction of any of the books. Read them.
@@ -882,3 +973,5 @@ not a reproduction of any of the books. Read them.
 [donovan]: https://archive.org/details/systemsprogrammi0000dono
 [sre]: https://sre.google/sre-book/table-of-contents/
 [relit]: https://pragprog.com/titles/mnee2/release-it-second-edition/
+[minto]: https://www.barbaraminto.com/
+[lefever]: https://www.wiley.com/en-us/The+Art+of+Explanation%3A+Making+your+Ideas%2C+Products%2C+and+Services+Easier+to+Understand-p-9781118374580
