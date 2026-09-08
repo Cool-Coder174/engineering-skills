@@ -5,13 +5,13 @@
     "url": "https://github.com/Cool-Coder174"
   },
   "metadata": {
-    "description": "Skills that make an agent work like a senior engineer, grounded in DDIA, Stallings, APUE, Google's SRE book, Release It!, and five other texts."
+    "description": "Skills that make an agent work like a senior engineer, grounded in DDIA, Stallings, APUE, Google's SRE book, Release It!, Minto, LeFever, and five other texts."
   },
   "plugins": [
     {
       "name": "engineering-skills",
       "source": "./",
-      "description": "Design, estimation, security engineering, planning, implementation, code review, and production operations: error budgets, alerting, capacity, self-healing APIs, troubleshooting, incident response, and automated reverse branching."
+      "description": "Design, estimation, security engineering, planning, implementation, code review, production operations, and a read-only engineering consultant that compares frameworks and explains them in plain language."
     }
   ]
 }

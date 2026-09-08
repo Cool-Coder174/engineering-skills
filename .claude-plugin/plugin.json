@@ -1,7 +1,7 @@
 {
   "name": "engineering-skills",
-  "description": "Agent Skills for senior-engineer workflow: clarify, estimate, design, implement, verify, review, then operate — SLOs, observability, capacity, self-healing integrations, troubleshooting, incident response, and reversible releases.",
-  "version": "1.1.0",
+  "description": "Agent Skills for senior-engineer workflow: clarify, estimate, design, implement, verify, review, then operate — SLOs, observability, capacity, self-healing integrations, troubleshooting, incident response, and reversible releases. Plus a read-only consultant that compares tools and explains them.",
+  "version": "1.2.0",
   "author": {
     "name": "Cool-Coder174",
     "url": "https://github.com/Cool-Coder174"
