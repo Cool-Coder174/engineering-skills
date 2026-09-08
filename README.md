@@ -9,8 +9,10 @@ enforce one order of work:
 4. Write the code against robustness invariants.
 5. Check the code against the spec, with evidence.
 6. Review for the failure modes that appear only under concurrency, failure, attack, and scale.
+7. Operate it: set the reliability target, see the system, find the fault, undo the change,
+   and learn from the incident.
 
-Grounded in eight books:
+Grounded in ten books:
 
 | Book | What it contributes |
 |---|---|
@@ -22,6 +24,8 @@ Grounded in eight books:
 | **[*Grokking the System Design Interview*][grok]** — Design Gurus | Building-block selection. The seven-step design process. |
 | **[*Database Internals*][dbi]** — Alex Petrov | Database selection methodology, storage engine trade-offs, the RUM conjecture |
 | **[*Code Simplicity*][cs]** — Max Kanat-Alexander | The laws of software design. The anti-over-engineering discipline. |
+| **[*Site Reliability Engineering*][sre]** — Beyer, Jones, Petoff, Murphy | Error budgets, the four golden signals, the troubleshooting model, incident command, cascading failure, release reversibility |
+| **[*Release It!*][relit]** — Michael T. Nygard | The eleven stability antipatterns and the eight stability patterns. Integration-point failure, capacity antipatterns, Transparency |
 
 ---
 
@@ -70,9 +74,25 @@ groups.
 - an attack that succeeds and leaves no audit record, because the only log is one the
   attacker can edit
 
-This suite turns all three groups into **named, detectable catalogs** — 48 data hazards, 55
-systems failures, and 64 security vulnerabilities. The planning, implementation, verification,
-and review skills all check against them.
+*After it ships, while it runs:*
+
+- a change that nobody can undo, because the migration dropped the column the old code reads
+- a `git reset --hard` on a branch that two other people already pulled
+- an agent that edited nine files across four turns, with no checkpoint between them
+- a retry loop that turns one slow vendor into a self-inflicted denial of service
+- a call to a vendor API with no read timeout, so one hung socket drains the pool
+- a circuit breaker whose state no dashboard shows, so nobody knows the feature is off
+- an alert that pages a human who can do nothing about it, until humans stop reading pages
+- a service with a 99.99% target that depends on four services with 99.9% targets
+- an availability measured on the server, where it cannot see the failure the user saw
+- an outage debugged by guessing, because nobody wrote down which hypothesis is already dead
+- a load test that passed because it aimed at QA, against a database with 100 rows
+- a backup that nobody ever restored, which means there is no backup
+
+This suite turns all four groups into **named, detectable catalogs** — 48 data hazards, 55
+systems failures, 64 security vulnerabilities, and 328 operations defects across seven
+catalogs. The planning, implementation, verification, and review skills all check against
+them.
 
 ---
 
@@ -124,43 +144,133 @@ skills/
 │       ├── 07-ipc-and-sockets.md            # Pipes, framing, shared memory, fd passing
 │       ├── 08-toolchain-and-machine-model.md # Assemble/link/load, symbols, storage classes
 │       └── failure-catalog.md      # 55 named failures: signature → consequence → fix
-└── security-engineering/           # Whether it survives an ATTACKER
-    ├── SKILL.md                    # Threat model, security services, decision tables, security record
+├── security-engineering/           # Whether it survives an ATTACKER
+│   ├── SKILL.md                    # Threat model, security services, decision tables, security record
+│   └── references/
+│       ├── 01-threat-model-and-security-services.md
+│       ├── 02-cryptographic-primitives-and-modes.md
+│       ├── 03-randomness-and-key-management.md
+│       ├── 04-public-key-and-key-exchange.md
+│       ├── 05-integrity-hashes-and-macs.md
+│       ├── 06-signatures-and-authentication-protocols.md
+│       ├── 07-identity-certificates-and-pki.md
+│       ├── 08-transport-and-channel-security.md
+│       ├── 09-authentication-and-access-control.md
+│       ├── 10-intrusion-detection-and-audit.md
+│       ├── 11-malicious-software-and-availability.md
+│       ├── 12-perimeter-and-trusted-systems.md
+│       └── vulnerability-catalog.md # 64 named vulnerabilities: signature → consequence → fix
+├── slo-engineering/                # What "reliable enough" MEANS, as a number
+│   ├── SKILL.md                    # Risk, indicators, objectives, the error budget, the toil budget
+│   └── references/
+│       ├── 01-risk-and-the-error-budget.md
+│       ├── 02-slis-slos-and-slas.md
+│       ├── 03-availability-math.md          # The nines table, dependency multiplication, burn rate
+│       ├── 04-the-toil-budget.md            # Toil defined. The 50% cap
+│       ├── 05-gathering-availability-requirements.md
+│       └── slo-defect-catalog.md            # 47 named defects: signature → consequence → fix
+├── observability/                  # Whether you can SEE it
+│   ├── SKILL.md                    # Golden signals, symptom alerting, what may page a human
+│   └── references/
+│       ├── 01-the-four-golden-signals.md
+│       ├── 02-symptom-based-alerting.md     # The four questions to ask before any alert
+│       ├── 03-white-box-and-black-box.md
+│       ├── 04-time-series-and-rules.md
+│       ├── 05-transparency-and-logging.md   # A log line is a user interface
+│       ├── 06-the-operations-database.md
+│       └── observability-gap-catalog.md     # 44 named gaps: signature → consequence → fix
+├── capacity-engineering/           # Which resource RUNS OUT first
+│   ├── SKILL.md                    # The constrained resource, load testing, the capacity plan
+│   └── references/
+│       ├── 01-defining-capacity.md          # The capacity myths, each stated then refuted
+│       ├── 02-capacity-antipatterns.md      # The ten capacity antipatterns
+│       ├── 03-capacity-patterns.md
+│       ├── 04-load-testing.md               # Why a test aimed at QA passes and production fails
+│       ├── 05-intent-based-capacity-planning.md
+│       ├── 06-load-balancing-and-utilization.md
+│       └── capacity-defect-catalog.md       # 47 named defects: signature → consequence → fix
+├── self-healing-apis/              # Whether a VENDOR can take you down
+│   ├── SKILL.md                    # Detect → localize → classify → remediate → verify → escalate
+│   └── references/
+│       ├── 01-integration-points.md         # The six ways one remote call fails
+│       ├── 02-stability-antipatterns.md     # Nygard's eleven
+│       ├── 03-stability-patterns.md         # Nygard's eight, with the breaker state machine
+│       ├── 04-fault-localization.md         # Us, the network, the vendor, or a shared dependency
+│       ├── 05-overload-and-load-shedding.md
+│       ├── 06-cascading-failure.md
+│       ├── 07-automated-remediation-safety.md # What a self-healer may and may not do
+│       ├── 08-fault-injection-and-test-harness.md
+│       ├── 09-vendor-slas-and-degradation.md
+│       └── integration-fault-catalog.md     # 48 named faults: signature → consequence → fix
+├── production-troubleshooting/     # HOW to find the cause, instead of guessing
+│   ├── SKILL.md                    # Triage → examine → diagnose → test and treat → cure
+│   └── references/
+│       ├── 01-the-troubleshooting-model.md
+│       ├── 02-triage-first-diagnose-second.md # Mitigate before you understand
+│       ├── 03-examine-and-diagnose.md       # Bisect the request path
+│       ├── 04-test-and-treat.md
+│       ├── 05-negative-results-and-bias.md  # A negative result is a result
+│       ├── 06-making-troubleshooting-easier.md
+│       └── diagnostic-trap-catalog.md       # 40 named traps: signature → consequence → fix
+├── incident-response/              # How to RUN the outage, and learn from it
+│   ├── SKILL.md                    # Command roles, live state, handoff, blameless postmortem
+│   └── references/
+│       ├── 01-incident-command.md           # Commander, operations lead, communications lead
+│       ├── 02-emergency-response.md
+│       ├── 03-on-call.md
+│       ├── 04-postmortem-culture.md
+│       ├── 05-tracking-outages.md
+│       ├── 06-interrupts-and-overload.md
+│       └── incident-failure-catalog.md      # 52 named failures: signature → consequence → fix
+└── reverse-branching/              # How to UNDO it
+    ├── SKILL.md                    # The reversibility contract, revert vs. roll forward
     └── references/
-        ├── 01-threat-model-and-security-services.md
-        ├── 02-cryptographic-primitives-and-modes.md
-        ├── 03-randomness-and-key-management.md
-        ├── 04-public-key-and-key-exchange.md
-        ├── 05-integrity-hashes-and-macs.md
-        ├── 06-signatures-and-authentication-protocols.md
-        ├── 07-identity-certificates-and-pki.md
-        ├── 08-transport-and-channel-security.md
-        ├── 09-authentication-and-access-control.md
-        ├── 10-intrusion-detection-and-audit.md
-        ├── 11-malicious-software-and-availability.md
-        ├── 12-perimeter-and-trusted-systems.md
-        └── vulnerability-catalog.md # 64 named vulnerabilities: signature → consequence → fix
+        ├── 01-the-reversibility-contract.md   # Declare the undo before the change ships
+        ├── 02-release-engineering.md          # Hermetic builds, versioned configuration
+        ├── 03-progressive-rollout-and-canary.md
+        ├── 04-change-induced-emergency.md     # Revert first. Diagnose after
+        ├── 05-locating-the-bad-change.md      # Bisection. "What changed last"
+        ├── 06-data-and-schema-reversibility.md # Code reverts. Data does not
+        ├── 07-automation-safety.md            # The automation is the blast radius
+        ├── 08-agent-and-operator-shortcuts.md # The checkpoint and revert command surface
+        ├── 09-launch-coordination.md
+        └── rollback-hazard-catalog.md         # 50 named hazards: signature → consequence → fix
 ```
 
 Each skill is a self-contained folder with a `SKILL.md`, which is the layout Claude Code,
 Cursor, and compatible agents expect.
 
-**The four gate skills split the problem deliberately.** `system-design` decides *what to
-build* — scope, capacity, components, trade-offs. `data-systems-design` decides *whether it
-stays correct* across machines — isolation, replication, ordering, hazards.
-`systems-programming` decides *whether the code survives one kernel* — short reads, atomicity,
-durability, signals, threads. `security-engineering` decides *whether it survives an
-adversary* — trust boundaries, identity, secrets, untrusted input.
+**The gate skills split the problem deliberately.** Each one answers a different question.
 
-These are four different questions. Agents most often merge the fourth into the second by
+| Gate skill | The question it answers |
+|---|---|
+| `system-design` | What must we build? Scope, capacity, components, trade-offs |
+| `data-systems-design` | Does it stay correct across machines? Isolation, replication, ordering |
+| `systems-programming` | Does the code survive one kernel? Short reads, atomicity, durability, signals |
+| `security-engineering` | Does it survive an adversary? Trust boundaries, identity, secrets |
+| `slo-engineering` | How reliable must it be, in a number we can spend? |
+| `observability` | Can we see it? Which signals exist, and which of them may page a human |
+| `capacity-engineering` | Which resource runs out first, and at what load? |
+| `self-healing-apis` | Can a vendor take us down, and what do we do without a human? |
+| `production-troubleshooting` | When it breaks, how do we find the cause instead of guessing? |
+| `incident-response` | Who runs the outage, and what do we learn from it? |
+| `reverse-branching` | How do we undo this change? |
+
+These are different questions. Agents most often merge the fourth into the second by
 mistake. Correctness analysis assumes that faults are random. Security analysis assumes that
 an attacker chooses them. A queue consumer that is fully idempotent under duplicate delivery
 can still be a replay vulnerability. Idempotency answers "did this happen twice" and not "did
 the right party ask for it".
 
-A new public service runs all four. Adding a retry to an existing call runs only the second.
-A file-ingest pipeline or a daemon runs the third. Adding an authenticated endpoint runs only
-the fourth.
+The second common merge is design into operation. A design gate asks whether the system can
+be correct. An operations gate asks what happens at 03:00 when it is not. A design that is
+correct and unobservable is an outage that nobody can end.
+
+A new public service runs the first four. Adding a retry to an existing call runs only
+`data-systems-design`. A file-ingest pipeline or a daemon runs `systems-programming`. Adding
+an authenticated endpoint runs `security-engineering`. Any change that reaches production
+runs `reverse-branching`. Any new call to a system you do not own runs `self-healing-apis`.
+An outage in progress runs `production-troubleshooting` and `incident-response`.
 
 ---
 
@@ -196,9 +306,12 @@ On Windows (PowerShell):
 Copy-Item -Recurse -Force skills\* $HOME\.cursor\skills\
 ```
 
-The agent finds each skill by its folder name. Install `data-systems-design`,
-`systems-programming`, and `security-engineering` together with the rest. The hazard, failure,
-and vulnerability scans in the other skills refer to those three catalogs by path.
+The agent finds each skill by its folder name. Install the ten catalog skills together with
+the rest: `data-systems-design`, `systems-programming`, `security-engineering`,
+`slo-engineering`, `observability`, `capacity-engineering`, `self-healing-apis`,
+`production-troubleshooting`, `incident-response`, and `reverse-branching`. The scans in the
+other skills refer to those catalogs by path, and a missing folder turns a scan into a
+silent no-op.
 
 ---
 
@@ -207,6 +320,20 @@ and vulnerability scans in the other skills refer to those three catalogs by pat
 ```
 PLANNING → ARCHITECTURE → DESIGN → SYSTEMS → SECURITY → DETAIL PLANNING → IMPLEMENT → VERIFY → REVIEW
  plan.md    ##Architecture  ##Design  ##Systems  ##Security   executor.md      code      report   findings
+```
+
+The pipeline ends at merge. The operations skills run on either side of it. Four of them run
+*before* the merge, because a reliability target, a signal, a capacity number, and a reverse
+path all have to exist before the change ships. Three of them run *after* it, when something
+has already gone wrong.
+
+```
+   BEFORE THE MERGE                          AFTER IT SHIPS
+   slo-engineering      the target        production-troubleshooting   find the cause
+   observability        the signals       incident-response            run it, then learn
+   capacity-engineering the ceiling       reverse-branching            undo the change
+   self-healing-apis    the degraded mode
+   reverse-branching    the reverse path
 ```
 
 | Command | What happens |
@@ -227,6 +354,14 @@ PLANNING → ARCHITECTURE → DESIGN → SYSTEMS → SECURITY → DETAIL PLANNIN
 | `/review-inscope` | Check the change against the stated task |
 | `/review-data` | Deep data/concurrency/distribution hazard audit |
 | `/review-security` | Deep security audit: threat model, then the vulnerability catalog |
+| `slo` / `error budget` | Set the indicator, the objective, and the budget policy |
+| `observability` / `what should page` | Choose the signals, then decide what may wake a human |
+| `capacity` / `will this hold` | Find the constrained resource and the load that saturates it |
+| `self-heal` / `vendor is down` | Localize the fault, then choose a remediation inside the safety envelope |
+| `troubleshoot` / `why is it broken` | Run the triage, examine, diagnose, test loop |
+| `incident` / `declare an incident` | Assign the roles, open the live state, run the response |
+| `postmortem` | Write the blameless record, with owned and dated action items |
+| `reverse` / `revert this` / `checkpoint` | Produce the reverse path, or run the checkpoint and revert commands |
 
 Each phase stops when it's done and waits for you. One phase per cycle, by design.
 
@@ -432,6 +567,141 @@ mitigation into a step with a negative test. `implement` enforces it. `verify` a
 
 ---
 
+## What the operations gates produce
+
+The four design gates ask whether the system can be correct. The operations gates ask what
+happens when it is not. They run on any change that reaches a real user.
+
+**`slo-engineering`** turns "it should be reliable" into a number that can be spent. An
+indicator measured where the user feels it, an objective with a stated window, an error
+budget in minutes, and a written policy for what happens when the budget is gone. It refuses
+a 100% target, because a 100% target makes every release a negotiation with no rule. It also
+computes the ceiling your dependencies impose, so a 99.99% promise on top of four 99.9%
+services gets caught on the whiteboard instead of in the postmortem.
+
+**`observability`** decides what the system exposes and what may interrupt a person. Latency
+split into successful and failed requests, traffic, errors, saturation. Then the harder half:
+an alert must be urgent, actionable, and about a symptom a user can feel. Everything else is
+a ticket or a log line. An alert that a human cannot act on is a defect in the alert.
+
+**`capacity-engineering`** finds the resource that runs out first and names the load that
+gets there. Requests per second is not a capacity number. Connections, threads, file
+descriptors, memory per session, and database connections are. It also rejects the load test
+that aims at QA, because the test that passes against 100 rows is the test that taught the
+team nothing.
+
+**`self-healing-apis`** treats every call to a system you do not own as a risk with six
+distinct failure shapes, not one. A timeout on every blocking wait, a circuit breaker with a
+visible state, a bulkhead that keeps one vendor from draining the shared pool, and a written
+degraded mode per integration point. It then bounds what the healing may do on its own:
+idempotent, rate limited, observable, reversible, and with a stop control.
+
+**`production-troubleshooting`** replaces guessing with a loop. Triage, examine, diagnose,
+test and treat, cure. Mitigate before you understand, but preserve the evidence first.
+Write down the hypothesis you killed, because a negative result is a result and the next
+responder needs it.
+
+**`incident-response`** gives the outage a commander, an operations lead, a communications
+lead, and one live document that everybody reads. It declares early, because an incident you
+closed in ten minutes costs less than an incident nobody declared. Then it writes the
+postmortem without naming a person, and rejects an action item with no owner and no date.
+
+**`reverse-branching`** makes the undo explicit before the change ships. Every change
+declares its reversibility class, its reverse action, the actor allowed to run it, and the
+measured time it takes. It knows the part everyone forgets: code reverts, data does not. A
+`git revert` past a dropped column restores the code and leaves the corruption.
+
+---
+
+## The operations catalogs
+
+Seven catalogs, 328 named defects, in the same format as the other three — a **detection
+signature**, a **consequence**, and a **required fix**.
+
+| Catalog | Codes | Groups |
+|---|---|---|
+| `slo-engineering/references/slo-defect-catalog.md` | 47 (`L-01` …) | Objective definition · indicator and measurement point · aggregation · the error budget · release policy · dependency arithmetic · toil · expectation |
+| `observability/references/observability-gap-catalog.md` | 44 (`M-01` …) | Signals that do not exist · measurements that lie · alerts that must not page · the outside view · logs as an operator interface · the observer itself |
+| `capacity-engineering/references/capacity-defect-catalog.md` | 47 (`C-01` …) | The capacity number · the load test · pooled resources · sessions · per-request waste · the database · cache and memory · load distribution · the plan |
+| `self-healing-apis/references/integration-fault-catalog.md` | 48 (`I-01` …) | Transport · timeouts and deadlines · retries and load amplification · circuit breakers · bulkheads · health checks · payload · telemetry · degradation · remediation safety |
+| `production-troubleshooting/references/diagnostic-trap-catalog.md` | 40 (`D-01` …) | Traps in the order of work · in reasoning · in the telemetry · in the log and the alert · in the test · in the change hypothesis · in the tools · in the record |
+| `incident-response/references/incident-failure-catalog.md` | 52 (`N-01` …) | Command and coordination · the live record · response order · diagnosis under pressure · detection and alert hygiene · the postmortem · on-call load |
+| `reverse-branching/references/rollback-hazard-catalog.md` | 50 (`R-01` …) | The reversibility contract · build and artifact identity · branch and commit hygiene · rollout and exposure · configuration reversal · data and schema reversal · automation and agent safety · detection and record |
+
+Ten catalogs now share one format and one severity key. 🔴 blocks the merge. 🟡 causes an
+outage or a wrong result under load. 🔵 is a risk to operation or maintenance. Each entry
+cites the chapter and page it comes from. An entry that current practice added after the
+books were written carries the **Modern** tag instead, so nothing modern is attributed to a
+2007 or 2016 text.
+
+---
+
+## Automated reverse branching
+
+`reverse-branching` answers a question an AI coding agent raises that a human team rarely
+did: an agent edited nine files across four turns, and something is wrong. What exactly do
+you undo?
+
+The skill gives both actors the same command surface, and attaches a safety rule to every
+command.
+
+| Goal | Command | Safety rule |
+|---|---|---|
+| Mark a safe point | `git commit -m "checkpoint: <name>"` | A stash is not a checkpoint. It has no stable name, and `git stash drop` asks nothing |
+| Name it | `git tag ckpt/<task>-<step>` | A tag survives a rebase of the branch |
+| Undo a published commit | `git revert <sha>` | It adds a commit. Every other clone stays valid |
+| Undo one file | `git restore --source=<ref> -- <path>` | It keeps the rest of the work |
+| Undo the last agent turn | `git reset --hard <checkpoint>` | Local, unpublished branches only. Never a shared branch |
+| Recover lost work | `git reflog` | Local, and it expires. The last resort, not the plan |
+| Isolate an agent | `git worktree add ../agent-<task>` | One actor writes per tree |
+| Find the bad change | `git bisect run <script>` | The test must give the same answer every time |
+
+Every command in that file is marked **Modern**. Neither book names a version-control tool.
+The books supply the safety rule. The command is the modern form of the rule.
+
+The rest of the skill is the part that matters more. A reverse path that stops at the commit
+is not a reverse path:
+
+- **A configuration change is a change.** SRE defines a push as any change to the running
+  software *or its configuration*.
+- **A change inherits the class of its least reversible part.** A pull request that adds a
+  function and drops a column is a destructive schema change.
+- **Some effects never come back.** A sent message, a captured payment, a file delivered to a
+  partner, an erased disk. The skill makes you name them before the merge, not after.
+- **Replication is not a backup, and a backup nobody restored is not a backup.** SRE spends a
+  chapter on this, including the restore that took seven days.
+- **The automation is the blast radius.** Automation applies one mistake everywhere at once,
+  so any automated reverter needs a rate limit, a canary, and a stop control.
+
+---
+
+## Self-healing APIs
+
+`self-healing-apis` answers the second half of the same problem: a vendor API you integrated
+is misbehaving, and you want the system to work out *where* the fault is before it wakes
+anybody.
+
+It starts from Nygard's point that one remote call does not fail one way. It fails six:
+the connection is refused, the connection hangs in the TCP stack, the connection is accepted
+and never answered, the answer is slow, the answer is protocol garbage, or the answer is a
+well-formed error. A `try`/`catch` around the call handles one of them.
+
+The localization step is a decision procedure, not a hunch. It separates four cases — the
+fault is in us, in the network, in the vendor, or in a dependency we share with them — and
+names the evidence that distinguishes each. Then it chooses a remediation from a list ordered
+by blast radius, and every entry has a precondition and a stop condition:
+
+```
+retry one request → open a breaker → shed load → fail over → restart → roll back → page a human
+```
+
+The safety envelope is the point. An automated remediation must be idempotent, rate limited,
+observable, and reversible, and it must never make a change whose effect it cannot measure.
+The retry is where teams get this wrong: a retry at every layer multiplies, and an automatic
+retry storm is a denial of service you inflicted on yourself.
+
+---
+
 ## Design principles
 
 **Proportionality.** Every skill has an explicit anti-over-engineering rule. A copy change
@@ -489,6 +759,23 @@ Nothing requires the full pipeline:
   "how should we store these credentials?", "what can an attacker do with this endpoint?"), and
   works as a threat-modelling lens on a design someone else wrote.
 - `planner` is useful alone for turning a vague request into a grounded plan.
+- `slo-engineering` answers "what should our target be?", "how do we measure this?", and
+  "can we promise 99.99% on top of these dependencies?" without any of the other skills.
+- `observability` answers "should this page someone?", "what are we missing?", and "why does
+  this dashboard not tell us anything". Its four questions work as a review of an alert
+  someone else wrote.
+- `capacity-engineering` answers "will this hold on launch day?" and "which number runs out
+  first?". Its load-testing reference works alone as a review of an existing test plan.
+- `self-healing-apis` answers "this vendor is flaky, what do we do?", "where should the
+  timeout go?", and "is our retry making it worse?". Use it as a design lens on any new
+  integration, before an outage rather than during one.
+- `production-troubleshooting` runs standalone during a live problem. It is the most useful
+  skill in the suite for an agent, because an agent's default under uncertainty is to guess,
+  and this replaces the guess with a loop.
+- `incident-response` runs standalone for an outage in progress, and its postmortem section
+  runs alone afterwards on an incident that was handled badly.
+- `reverse-branching` answers "how do I undo this?" on its own. Its checkpoint commands are
+  worth reading before an agent starts a long editing session, not after.
 
 ---
 
@@ -509,6 +796,13 @@ Skills previously lived as flat files at the repository root. They are now folde
 | — | `skills/system-design/` (new) |
 | — | `skills/systems-programming/` (new) |
 | — | `skills/security-engineering/` (new) |
+| — | `skills/slo-engineering/` (new) |
+| — | `skills/observability/` (new) |
+| — | `skills/capacity-engineering/` (new) |
+| — | `skills/self-healing-apis/` (new) |
+| — | `skills/production-troubleshooting/` (new) |
+| — | `skills/incident-response/` (new) |
+| — | `skills/reverse-branching/` (new) |
 
 If you installed the old flat files, remove them before you install the new folders.
 Otherwise the agent loads two versions of the same skill.
@@ -521,11 +815,19 @@ None. These are Markdown skill definitions for AI agents.
 
 ## Contributing
 
-Fork, branch, PR. New hazards, failures, and vulnerabilities are welcome. Follow the format
-of the catalog you add to (signature → consequence → fix) and cite the source of the failure
-mode. In the failure catalog, state which languages each entry applies to. In the
-vulnerability catalog, mark guidance that post-dates the 4th edition with the **Modern** tag
-rather than attributing it to Stallings.
+Fork, branch, PR. New hazards, failures, vulnerabilities, and operations defects are welcome.
+Follow the format of the catalog you add to (signature → consequence → fix) and cite the
+source of the failure mode. In the failure catalog, state which languages each entry applies
+to. In the vulnerability catalog, mark guidance that post-dates the 4th edition with the
+**Modern** tag rather than attributing it to Stallings. Apply the same rule to the seven
+operations catalogs: anything the 2016 and 2007 editions could not have known — container
+orchestration, service meshes, hosted CI, feature-flag platforms, LLM coding agents — carries
+**Modern** and is not attributed to either book.
+
+Prose in this repository follows **ASD-STE100 Simplified Technical English**. Short
+declarative sentences. Active voice with a named actor. No semicolons. No phrasal verbs. A
+rule or a procedure step stays under 20 words, and description stays under 25. Match the
+surrounding files.
 
 ## License
 
@@ -555,6 +857,17 @@ Concepts, terminology, methodology, and reference numbers come from:
   management, signals, and threads throughout `systems-programming`.
 - [*Systems Programming*][donovan] — John J. Donovan (McGraw-Hill, 1972). The machine model,
   the design procedure for a system program, and the four functions of a loader.
+- [*Site Reliability Engineering: How Google Runs Production Systems*][sre] — Betsy Beyer,
+  Chris Jones, Jennifer Petoff and Niall Richard Murphy (O'Reilly, 2016). Error budgets and
+  service level objectives, the four golden signals, the troubleshooting model, incident
+  command, cascading failure, release engineering, and data integrity. Chapter and page
+  references throughout `slo-engineering`, `observability`, `production-troubleshooting`,
+  `incident-response`, `capacity-engineering`, and `reverse-branching` refer to that edition.
+- [*Release It! Design and Deploy Production-Ready Software*][relit] — Michael T. Nygard
+  (Pragmatic Bookshelf, 2007). The eleven stability antipatterns and the eight stability
+  patterns, integration-point failure modes, the capacity antipatterns, and Transparency.
+  Section and page references throughout `self-healing-apis` and `capacity-engineering` refer
+  to the first edition. The link goes to the current edition, which is the one you can buy.
 
 This repository contains original prose that applies those concepts to agent workflows. It is
 not a reproduction of any of the books. Read them.
@@ -567,3 +880,5 @@ not a reproduction of any of the books. Read them.
 [cs]: https://www.codesimplicity.com/
 [apue]: https://www.apuebook.com/
 [donovan]: https://archive.org/details/systemsprogrammi0000dono
+[sre]: https://sre.google/sre-book/table-of-contents/
+[relit]: https://pragprog.com/titles/mnee2/release-it-second-edition/
